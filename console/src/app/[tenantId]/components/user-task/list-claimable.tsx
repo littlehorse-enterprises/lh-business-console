@@ -39,7 +39,7 @@ export default function ListClaimableUserTasks({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Claimable UserTasks</h1>
+      <h2 className="text-lg font-semibold mb-4">Available tasks</h2>
 
       <Tabs
         defaultValue={userGroups[0].id}

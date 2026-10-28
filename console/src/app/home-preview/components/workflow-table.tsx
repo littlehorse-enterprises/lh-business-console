@@ -28,12 +28,12 @@ export function WorkflowTable({
   return (
     <Card className="gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
       <div className="border-b border-border px-4 py-3">
-        <h2 className="text-base font-semibold">Processes</h2>
+        <h2 className="text-base font-semibold">Workflows</h2>
       </div>
       <Table>
         <TableHeader>
           <TableRow className="border-border bg-muted/30">
-            <TableHead>Process</TableHead>
+            <TableHead>Workflow</TableHead>
             <TableHead className="text-right whitespace-nowrap">
               Orders Out For Delivery
             </TableHead>

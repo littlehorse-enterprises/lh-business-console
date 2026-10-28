@@ -4,6 +4,11 @@ import { getUserTasks } from "@/app/[tenantId]/actions/user";
 import { DateRangePicker } from "@/components/ui/data-range-picker";
 import { ErrorResponse, ErrorType } from "@/lib/error-handling";
 import {
+  readTaskFilters,
+  updateTaskFilters,
+  type TaskFilters,
+} from "@/lib/task-filters";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -29,20 +34,18 @@ import {
   UserTaskStatus,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 import { AlertCircle, FilterIcon, RefreshCw, Search, X } from "lucide-react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import { useMemo, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import UserTask from "../../components/user-task";
 import Loading from "../loading";
 // Add a counter for generating unique keys
 const getUniqueId = () => Date.now().toString();
-
-type Query = {
-  user_group_id?: UserGroupDTO["id"];
-  status?: UserTaskStatus;
-  earliest_start_date?: string;
-  latest_start_date?: string;
-};
 
 export default function ListUserTasks({
   userGroups,
@@ -50,14 +53,17 @@ export default function ListUserTasks({
   initialData,
   claimable,
   initialError,
+  admin = false,
+  showHeading = true,
 }: {
   userGroups: UserGroupDTO[];
   userTaskDefName?: string;
   initialData: UserTaskRunListDTO;
   claimable?: boolean;
   initialError?: ErrorResponse;
+  admin?: boolean;
+  showHeading?: boolean;
 }) {
-  const [query, setQuery] = useState<Query>({});
   const [search, setSearch] = useState("");
   const [limit] = useState(100);
   const [error, setError] = useState<ErrorResponse | undefined>(initialError);
@@ -68,24 +74,22 @@ export default function ListUserTasks({
   const safeUserGroups = Array.isArray(userGroups) ? userGroups : [];
 
   const router = useRouter();
-
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  useEffect(() => {
-    const query = Object.fromEntries(
-      new URLSearchParams(searchParams).entries(),
-    ) as Query;
-    setQuery(query);
-  }, [searchParams]);
-
-  useLayoutEffect(() => {
-    const searchParams = new URLSearchParams();
-    Object.entries(query)
-      .filter(([, value]) => value !== undefined)
-      .forEach(([key, value]) => searchParams.set(key, value.toString()));
-    router.replace(
-      `${window.location.pathname.split("?")[0]}?${searchParams.toString()}`,
-    );
-  }, [query, router]);
+  const adminView = admin || !!userTaskDefName;
+  const requiresStatus = adminView && !userTaskDefName;
+  const query = useMemo(() => {
+    const filters = readTaskFilters(searchParams);
+    return requiresStatus
+      ? { ...filters, status: filters.status || UserTaskStatus.ASSIGNED }
+      : filters;
+  }, [searchParams, requiresStatus]);
+  function setQuery(next: TaskFilters) {
+    const params = updateTaskFilters(new URLSearchParams(searchParams), next);
+    router.replace(`${pathname}${params.size ? `?${params}` : ""}`, {
+      scroll: false,
+    });
+  }
 
   const getKey = (
     pageIndex: number,
@@ -104,11 +108,11 @@ export default function ListUserTasks({
         setError(undefined);
 
         const [, , query, limit, bookmark] = key;
-        const response = await (userTaskDefName
+        const response = await (adminView
           ? adminGetAllTasks(tenantId, {
               ...query,
               limit,
-              type: userTaskDefName,
+              type: userTaskDefName || "",
               bookmark,
             })
           : getUserTasks(tenantId, {
@@ -151,7 +155,10 @@ export default function ListUserTasks({
     setSearch("");
   };
 
-  const hasActiveFilters = Object.keys(query).length > 0 || search.length > 0;
+  const filterCount = Object.entries(query).filter(
+    ([key, value]) => value && (!requiresStatus || key !== "status"),
+  ).length;
+  const hasActiveFilters = filterCount > 0 || search.length > 0;
 
   const isPending = !data;
   if (isPending) return <Loading />;
@@ -163,13 +170,13 @@ export default function ListUserTasks({
   if (error) {
     return (
       <div className="space-y-6">
-        {!userTaskDefName && !claimable && (
+        {showHeading && !userTaskDefName && !claimable && (
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight text-foreground">
-              My Assigned UserTasks
+              My tasks
             </h2>
             <p className="text-muted-foreground">
-              UserTasks currently assigned to you
+              Tasks currently assigned to you
             </p>
           </div>
         )}
@@ -183,7 +190,7 @@ export default function ListUserTasks({
                 ? "Permission Denied"
                 : error.type === ErrorType.NETWORK
                   ? "Network Error"
-                  : "Error Loading UserTasks"}
+                  : "Error loading tasks"}
           </AlertTitle>
           <AlertDescription className="mt-2">{error.message}</AlertDescription>
           <Button
@@ -219,10 +226,10 @@ export default function ListUserTasks({
   return (
     <div className="space-y-6">
       {/* Header */}
-      {!userTaskDefName && !claimable && (
+      {showHeading && !userTaskDefName && !claimable && (
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            My Assigned UserTasks
+            My tasks
           </h2>
           <p className="text-muted-foreground">
             Tasks currently assigned to you
@@ -230,14 +237,12 @@ export default function ListUserTasks({
         </div>
       )}
 
-      {userTaskDefName && (
+      {showHeading && userTaskDefName && (
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
             {userTaskDefName}
           </h2>
-          <p className="text-muted-foreground">
-            All UserTasks for this UserTaskDef
-          </p>
+          <p className="text-muted-foreground">Tasks for this form</p>
         </div>
       )}
 
@@ -247,7 +252,8 @@ export default function ListUserTasks({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search UserTasks..."
+            aria-label="Search tasks"
+            placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 pr-10"
@@ -255,6 +261,7 @@ export default function ListUserTasks({
           {search && (
             <button
               onClick={() => setSearch("")}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
@@ -264,6 +271,24 @@ export default function ListUserTasks({
 
         {/* Filters */}
         <div className="flex gap-2">
+          {requiresStatus && (
+            <Select
+              value={query.status}
+              onValueChange={(value) =>
+                setQuery({ ...query, status: value as UserTaskStatus })
+              }
+            >
+              <SelectTrigger aria-label="Task status" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ASSIGNED">In progress</SelectItem>
+                <SelectItem value="UNASSIGNED">Available</SelectItem>
+                <SelectItem value="DONE">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -272,9 +297,9 @@ export default function ListUserTasks({
               >
                 <FilterIcon className="h-4 w-4 mr-2" />
                 Filters
-                {hasActiveFilters && (
+                {filterCount > 0 && (
                   <span className="ml-2 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                    {Object.keys(query).length}
+                    {filterCount}
                   </span>
                 )}
               </Button>
@@ -282,10 +307,7 @@ export default function ListUserTasks({
             <PopoverContent className="w-80" align="end">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Filter UserTasks</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Narrow down your UserTask list
-                  </p>
+                  <h4 className="font-medium text-sm">Filter tasks</h4>
                 </div>
 
                 <div className="space-y-4">
@@ -312,34 +334,38 @@ export default function ListUserTasks({
                     />
                   </div>
 
-                  <div>
-                    <Label className="text-sm font-medium">Status</Label>
-                    <Select
-                      value={query.status ?? "ALL"}
-                      onValueChange={(value) => {
-                        setQuery({
-                          ...query,
-                          status:
-                            value === "ALL"
-                              ? undefined
-                              : (value as UserTaskStatus),
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Statuses</SelectItem>
-                        {userTaskDefName && (
-                          <SelectItem value="UNASSIGNED">Available</SelectItem>
-                        )}
-                        <SelectItem value="ASSIGNED">In Progress</SelectItem>
-                        <SelectItem value="DONE">Completed</SelectItem>
-                        <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {!requiresStatus && (
+                    <div>
+                      <Label className="text-sm font-medium">Status</Label>
+                      <Select
+                        value={query.status ?? "ALL"}
+                        onValueChange={(value) => {
+                          setQuery({
+                            ...query,
+                            status:
+                              value === "ALL"
+                                ? undefined
+                                : (value as UserTaskStatus),
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">All Statuses</SelectItem>
+                          {adminView && (
+                            <SelectItem value="UNASSIGNED">
+                              Available
+                            </SelectItem>
+                          )}
+                          <SelectItem value="ASSIGNED">In Progress</SelectItem>
+                          <SelectItem value="DONE">Completed</SelectItem>
+                          <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   {safeUserGroups.length > 0 && (
                     <div>
@@ -391,7 +417,7 @@ export default function ListUserTasks({
           {/* Results count */}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing {filteredTasks.length} of {allTasks.length} UserTasks
+              Showing {filteredTasks.length} of {allTasks.length} loaded tasks
               {search && ` matching "${search}"`}
             </p>
           </div>
@@ -405,7 +431,7 @@ export default function ListUserTasks({
                 // wfRunId to key the list.
                 key={`${userTask.wfRunId}/${userTask.id}`}
                 userTask={userTask}
-                admin={!!userTaskDefName}
+                admin={adminView}
                 claimable={claimable}
               />
             ))}
@@ -426,7 +452,7 @@ export default function ListUserTasks({
                     Loading...
                   </>
                 ) : (
-                  "Load More UserTasks"
+                  "Load more tasks"
                 )}
               </Button>
             </div>
@@ -438,12 +464,12 @@ export default function ListUserTasks({
             <AlertCircle className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">
-            No UserTasks found
+            No tasks found
           </h3>
           <p className="text-muted-foreground mb-4">
             {search || hasActiveFilters
               ? "Try adjusting your search or filters"
-              : "There are no UserTasks to display"}
+              : "There are no tasks to display"}
           </p>
           {hasActiveFilters && (
             <Button variant="outline" onClick={clearFilters}>

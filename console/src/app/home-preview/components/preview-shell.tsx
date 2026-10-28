@@ -25,8 +25,8 @@ import { useState, type ReactNode } from "react";
 
 export type View = "overview" | "workflows" | "tasks" | "metrics";
 export const viewNames: Record<View, string> = {
-  overview: "Process Overview",
-  workflows: "Processes",
+  overview: "Workflow Overview",
+  workflows: "Workflows",
   tasks: "User Tasks",
   metrics: "Metrics",
 };
@@ -198,11 +198,11 @@ export function PreviewShell({
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Processes, orders, user tasks, and metrics use sample data.
+              Workflows, orders, user tasks, and metrics use sample data.
               Completing a user task updates this preview and resets on reload.
             </p>
             <p>
-              The order list is a sample of the process totals. User Task Forms
+              The order list is a sample of the workflow totals. User Task Forms
               and permissions are outside this preview.
             </p>
           </div>

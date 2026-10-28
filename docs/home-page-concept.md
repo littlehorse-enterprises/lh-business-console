@@ -1,102 +1,99 @@
-# Business Console: Process Overview
+# Business Console: User Tasks refactor
 
-An interactive frontend for the initial Business Console discussion, on branch
-`codex/home-page-brainstorm`. The existing Next.js console renders it at
-`/home-preview`; it requires no LittleHorse server, identity provider, or
-Workflow Diffuser. Workflow IDs, order IDs, counts, times, and history are sample
-values. Actions reset on reload.
+Branch: `codex/home-page-brainstorm`.
+
+The October 28 meeting narrowed the next step to moving the existing User Tasks
+Bridge screens into the Business Console sidebar. The authenticated application
+now uses the existing backend, forms, task actions, users, and groups. The earlier
+order dashboard remains at `/home-preview` as a separate, sample-data concept;
+it is not the application landing page.
 
 ## Preview
 
-![Process Overview](home-page-concept/overview.png)
+![Tasks](user-task-refactor/tasks.png)
 
-![Processes and Orders](home-page-concept/workflow-runs.png)
+![Forms](user-task-refactor/forms.png)
 
-![Order details](home-page-concept/workflow-run.png)
+![Existing comments action](user-task-refactor/comments.png)
 
-## Terminology source
+[Mobile task view](user-task-refactor/mobile.png)
 
-The example process comes from the user-supplied **Business Console Overview**
-PDF. At the user's request, the UI calls workflows **Processes** and uses
-business-facing names for orders, status, delivery time, and timeline entries.
-Technical identifiers, metadata names, version numbers, and tenant labels are
-not displayed. The document describes itself as a proposal; the frontend does
-not establish a production configuration or API contract.
+## Decisions from the meeting
 
-| UI terminology                                             | Source                                                                    |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Process Overview; Processes                                | User-requested wording for the document's Workflow Overview and workflows |
-| Orders; Order details                                      | Business names for the document's order example and Workflow Run View     |
-| User Tasks; Pending; Completed                             | Pages 1 and 3, user tasks and important-step history                      |
-| Order ID; User; Status                                     | Readable labels for `order-id`, `user-id`, and `order-status`             |
-| Timeline; Order picked up; Order delivered                 | Pages 1 and 3, event history; configuration messages                      |
-| Metrics; Average delivery time                             | Pages 2-4, metrics and latency from pickup readiness to delivery          |
-| Configuration; User Task Forms; Users, Groups, Permissions | Pages 1-4, feature and configuration sections                             |
+Source: the supplied 24:58 Zoom recording, `video1671677937.mp4` and its separate
+`audio1671677937.m4a`. The transcript was checked against sampled video frames,
+including the side-by-side screens and annotations. Times are relative to the
+recording. Media and the full transcript remain outside this repository.
 
-The UI shows orders as the individual items in the example process. Technical
-run IDs, WfSpec and WfRun labels, raw variable names and values, and event type
-names remain outside the business-facing interface.
+| Time        | Decision                                                                      | Implementation                                                                                                    |
+| ----------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 00:04–00:12 | Use workflow terminology rather than processes.                               | The earlier workflow concept uses the agreed wording. Business-facing navigation avoids metadata type names.      |
+| 00:29–03:10 | Start from the working User Tasks UI and retain its capabilities.             | Reuse the existing task cards, forms, dialogs, API actions, and management components.                            |
+| 06:51–08:00 | People who only complete tasks should have a focused entry point.             | Ordinary users land on their tasks, with no admin menu. Existing role checks remain in place.                     |
+| 09:02–10:47 | Group form and task views beneath User Tasks; start with this menu.           | The sidebar contains Tasks and Forms; Users and Groups sit under Administration.                                  |
+| 16:18–17:04 | Treat the first step as a refactor; define workflow visualization separately. | The authenticated landing page contains real tasks. Workflow and analytics views are not added to its navigation. |
+| 18:23–19:09 | Comments must carry over to the new interface.                                | Existing comment create/edit/delete dialogs remain attached to task cards.                                        |
+| 19:09–21:25 | Remove large account-count cards; keep counts in their relevant views.        | Forms have a small count; user/group tables and task lists retain inline result counts.                           |
+| 24:23–24:40 | Carry the sidebar and all current features over incrementally.                | Existing routes, profile view switching, filters, pagination, and task actions remain available.                  |
 
-## Example from the proposal
+## Navigation and existing capabilities
 
-- **Process example:** `process-order`, the `business_flows` entry in the
-  configuration example, displayed as Order processing.
-- **Status variable:** `order-status`.
-- **Status values:** `BAKING`, `READY_FOR_PICKUP`, `PICKED_UP`, `DELIVERED`.
-- **Public variables:** `order-id`, `user-id`, `order-status`.
-- **Count:** Orders Out For Delivery, counting `PICKED_UP`.
-- **Latency:** average time from ready for pickup to delivered.
-- **Delivered orders:** last 30 days and previous 30 days.
-- **WorkflowEvents:** `order-picked-up` and `order-delivered`, with readable
-  messages following the examples in the configuration section.
-- **User:** Bob, the example user named in the permissions section.
+| View                | URL beneath `/<tenant>`         | Existing behavior retained                                                                                                     |
+| ------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Administrator tasks | `/admin` or `/admin?view=tasks` | Tasks across forms, search, status/date/group filters, pagination, assignment, completion, cancellation, comments, and results |
+| Forms               | `/admin?view=forms`             | Registered forms, per-form task counts, and opening the tasks for a form                                                       |
+| Tasks for a form    | `/admin/<form-name>`            | All statuses for that form, filters, pagination, task actions, and a link back to Forms                                        |
+| Users               | `/admin?view=users`             | Create, edit, enable/disable, role changes, passwords, groups, and deletion through the existing management component          |
+| Groups              | `/admin?view=groups`            | Create, edit, membership management, individual/bulk deletion, and pagination                                                  |
+| My tasks            | `/`                             | Assigned tasks, search, filters, completion, cancellation, results, and comments                                               |
+| Available tasks     | Available tasks tab on `/`      | Group selection, pagination, and claiming tasks                                                                                |
 
-The aggregate metrics and the eight visible orders are sample values; the order
-list is a subset of the totals. Order details show its status, user, pending
-user task, and timeline. The sample user task has no configured form fields;
-the proposal does not prescribe an input schema. Completing it advances the
-sample order status and adds business-readable timeline entries.
-Agent executions, form management, permissions, templates, and backend
-integration remain outside this frontend demonstration.
+Administrators can still switch to the user view from the account menu. Legacy
+`?tab=tasks`, `?tab=users`, and `?tab=groups` links resolve to their original
+form/user/group views. Administrator controls are omitted for ordinary users;
+the existing authentication proxy and backend authorization still protect them.
+
+The existing search API needs a status when searching across forms. The new
+administrator task view therefore starts with **In progress**, with **Available**,
+**Completed**, and **Cancelled** options. Selecting a form still permits all
+statuses. Task filters preserve the selected sidebar view, and only supported
+filter parameters are forwarded to the API. Result counts describe loaded
+records rather than claiming a global total.
+
+If group lookup fails, assigned tasks remain available with a group-specific
+error. Group lookup and claiming still require the identity provider permissions
+expected by the existing adapter; the frontend does not change those permissions.
+
+## Scope and deferred work
+
+- Reuse `@littlehorse-enterprises/ui-library`, the approved sidebar styling, and
+  the existing functional User Tasks screens. Status colors keep their meaning.
+- Keep technical type names out of navigation and user-facing descriptions.
+  Existing copyable task/workflow references remain available in task cards.
+- No backend, protobuf, generated API client, authentication policy, or production
+  data changes. Local verification uses the separate demo environment.
+- Creating/registering forms and a form builder were discussed at 06:04–06:33
+  and 17:30–18:23. They need a separate definition and are not represented by a
+  nonfunctional create button or a new invented API.
+- Workflow templates, status trackers, mapping multiple nodes to business steps,
+  and analytics/data exploration were discussed as follow-up work, not this
+  refactor. The sample order dashboard is retained only for that discussion.
 
 ## Run
 
-From the repository root, using the versions listed in the main README:
+Follow the repository README to start the backend and identity provider. Then:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm --dir api-client build
-LHUT_METRICS_DISABLED=true pnpm --dir console dev --hostname 127.0.0.1 --port 3100
+# Configure console/.env.local from console/.env.sample for your local services.
+AUTH_URL=http://localhost:3101 LHUT_METRICS_DISABLED=true pnpm --dir console dev --hostname 127.0.0.1 --port 3101
 ```
 
-Open <http://127.0.0.1:3100/home-preview>.
-
-## LittleHorse styling
-
-The UI uses `@littlehorse-enterprises/ui-library` for buttons, cards, tables,
-badges, inputs, selects, tabs, dialogs, and the order details sheet. The theme
-toggle comes from the existing console. The header and sidebar follow Saddle's
-structure; typography and neutral tables follow existing LittleHorse projects.
-
-Color has a consistent purpose in both light and dark themes:
-
-| Color   | Meaning                                                                                    |
-| ------- | ------------------------------------------------------------------------------------------ |
-| Blue    | Order statuses before delivery, users, and user task completion                            |
-| Amber   | Pending user tasks; LittleHorse's primary color also marks selected navigation and actions |
-| Green   | Delivered orders and completed user tasks                                                  |
-| Neutral | Delivery time without a configured target, future statuses, and order IDs                  |
-
-Color is accompanied by labels, values, or icons. No additional workflow status
-or timing target is inferred from the sample values.
-
-## Implementation boundaries
-
-- `console/src/app/home-preview/` contains only the frontend and sample data.
-- The auth proxy excludes exactly `/home-preview` and its trailing-slash variant.
-  Tenant routes and similarly named routes still pass through authentication.
-- The session provider receives an empty session only on that exact route.
-- No backend, protobuf schema, generated API client, or production data changes.
+Open <http://localhost:3101/default> for the user view or
+<http://localhost:3101/default/admin> for the administrator view. Authentication
+is required. The repository's demo administrator is `my-admin-user` / `1234`.
+The earlier sample-only concept remains at `/home-preview`.
 
 ## Validation
 
@@ -106,7 +103,9 @@ pnpm --dir console exec tsc --noEmit
 LHUT_METRICS_DISABLED=true pnpm --dir console build
 ```
 
-The proxy test checks the exact public route and protected tenant paths. Browser
-checks cover the process and user-task views, search by user and order ID,
-status filters, reporting periods, user task completion, order details, timeline
-entries, Escape dismissal, light/dark themes, and desktop/mobile layouts.
+Regression tests cover legacy navigation, preserving sidebar state when filters
+change, forwarding only task filters to the API, existing role extraction, and
+the exact public preview route. Browser verification uses real local API calls
+for administrator and ordinary-user navigation, tasks by form/status, comments,
+completion, results, assignment controls, available tasks/claiming, user/group
+management views, and responsive layouts.

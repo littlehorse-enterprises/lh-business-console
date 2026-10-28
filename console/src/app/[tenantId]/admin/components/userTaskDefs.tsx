@@ -96,10 +96,9 @@ export default function UserTaskDefs({
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error loading UserTaskDefs</AlertTitle>
+        <AlertTitle>Error loading forms</AlertTitle>
         <AlertDescription>
-          Failed to load UserTaskDefs. Please check your permissions and try
-          again.
+          Failed to load forms. Please check your permissions and try again.
         </AlertDescription>
       </Alert>
     );
@@ -126,14 +125,17 @@ export default function UserTaskDefs({
   }
 
   // Loading state
-  if (isTaskCountsLoading || typeof taskCounts === "undefined") {
+  if (
+    userTaskDefs.length > 0 &&
+    (isTaskCountsLoading || typeof taskCounts === "undefined")
+  ) {
     return (
       <div className="flex flex-col gap-6">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {userTaskDefs.map((name) => (
             <div
               key={name}
-              className="relative rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-6 shadow-sm animate-pulse"
+              className="relative rounded-xl border border-border bg-card p-6 shadow-sm animate-pulse"
             >
               {/* Status indicator skeleton */}
               <div className="absolute top-4 right-4">
@@ -199,11 +201,10 @@ export default function UserTaskDefs({
         </div>
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-foreground">
-            No UserTaskDefs found
+            No forms found
           </h3>
           <p className="text-muted-foreground max-w-md">
-            You don't have any UserTaskDefs registered yet. UserTaskDefs are
-            created when you deploy workflows that contain UserTasks.
+            No forms are registered yet.
           </p>
         </div>
       </div>
@@ -214,7 +215,7 @@ export default function UserTaskDefs({
     <div className="flex flex-col gap-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {userTaskDefs.map((name: string) => {
-          const counts = taskCounts.find(
+          const counts = taskCounts?.find(
             (count: UserTaskDefCount) => count.name === name,
           ) || {
             totalCount: 0,
@@ -222,54 +223,35 @@ export default function UserTaskDefs({
             assignedToMeCount: 0,
           };
 
-          const hasActiveUserTasks = counts.totalCount > 0;
-
           return (
-            <Link key={name} href={`/${tenantId}/admin/${name}`}>
-              <div className="group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 cursor-pointer h-full">
+            <Link
+              key={name}
+              href={`/${tenantId}/admin/${encodeURIComponent(name)}`}
+            >
+              <div className="group relative h-full cursor-pointer overflow-hidden rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/50">
                 {/* Background Pattern */}
                 <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity duration-300" />
-
-                {/* Status Indicator */}
-                <div className="absolute top-4 right-4">
-                  <div
-                    className={`w-3 h-3 rounded-full ${hasActiveUserTasks ? "bg-green-500" : "bg-gray-300"} shadow-sm`}
-                  >
-                    {hasActiveUserTasks && (
-                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                    )}
-                  </div>
-                </div>
 
                 {/* Header */}
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative">
-                    <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl border border-primary/20 group-hover:shadow-md transition-all duration-300">
+                    <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 group-hover:shadow-md transition-all duration-300">
                       <ClipboardList className="h-6 w-6 text-primary" />
                     </div>
-                    {hasActiveUserTasks && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-                        <div className="w-1 h-1 bg-white rounded-full" />
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
                       {name}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      UserTaskDef
-                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">Form</p>
                   </div>
                 </div>
 
                 {/* Statistics */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Total UserTasks
-                    </span>
+                    <span className="text-muted-foreground">Total tasks</span>
                     <span className="font-medium text-foreground">
                       {counts.totalCount > 99 ? "99+" : counts.totalCount}
                     </span>

@@ -6,7 +6,6 @@ import {
   Avatar,
   AvatarFallback,
 } from "@littlehorse-enterprises/ui-library/avatar";
-import { Badge } from "@littlehorse-enterprises/ui-library/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,25 +41,16 @@ export default function Header() {
 
   return (
     <>
-      {isAdmin && pathname == `/${tenantId}` && (
-        <div className="bg-destructive border-b border-destructive-foreground/20">
-          <div className="px-4 md:px-8 lg:px-16 py-3">
-            <div className="flex items-center justify-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-destructive-foreground/60"></div>
-              <p className="text-sm font-medium text-destructive-foreground">
-                Viewing as User
-              </p>
-              <div className="h-2 w-2 rounded-full bg-destructive-foreground/60"></div>
-            </div>
-          </div>
-        </div>
-      )}
-      <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 sticky top-0 z-50">
-        <div className="px-4 md:px-8 lg:px-16 py-4">
+      <header className="shrink-0 border-b border-border bg-background">
+        <div className="px-4 py-4 md:px-6">
           <div className="flex justify-between items-center">
             {/* Logo and Branding */}
             <Link
-              href={`/${tenantId}`}
+              href={
+                isAdmin && pathname.startsWith(`/${tenantId}/admin`)
+                  ? `/${tenantId}/admin`
+                  : `/${tenantId}`
+              }
               className="flex items-center gap-3 group"
             >
               <div className="relative">
@@ -79,7 +69,7 @@ export default function Header() {
                   LittleHorse
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">
-                  UserTasks Bridge
+                  Business Console
                 </span>
               </div>
             </Link>
@@ -91,26 +81,23 @@ export default function Header() {
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors">
+                  <button
+                    aria-label="Account menu"
+                    className="flex items-center gap-3 rounded-lg p-1 hover:bg-accent/50"
+                  >
                     {status === "authenticated" ? (
                       <>
-                        <div className="flex flex-col items-end text-right">
+                        <div className="hidden flex-col items-end text-right md:flex">
                           <span className="text-sm font-medium text-foreground">
                             {session.user?.name || "User"}
                           </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {tenantId}
-                            </span>
-                            {isAdmin && (
-                              <Badge
-                                variant="secondary"
-                                className="text-xs px-2 py-0"
-                              >
-                                Admin
-                              </Badge>
-                            )}
-                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {isAdmin
+                              ? pathname.startsWith(`/${tenantId}/admin`)
+                                ? "Administrator"
+                                : "User view"
+                              : "User"}
+                          </span>
                         </div>
                         <Avatar className="h-9 w-9 border-2 border-border">
                           <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
@@ -120,7 +107,7 @@ export default function Header() {
                       </>
                     ) : (
                       <>
-                        <div className="flex flex-col items-end text-right">
+                        <div className="hidden flex-col items-end text-right md:flex">
                           <Skeleton className="h-4 w-20" />
                           <Skeleton className="h-3 w-16 mt-1" />
                         </div>
@@ -137,7 +124,7 @@ export default function Header() {
                         : "Loading..."}
                     </span>
                     <span className="text-xs text-muted-foreground font-normal">
-                      Tenant: {tenantId}
+                      {session?.user?.email}
                     </span>
                   </DropdownMenuLabel>
 
@@ -162,7 +149,7 @@ export default function Header() {
                             className="flex items-center gap-2"
                           >
                             <Settings className="h-4 w-4" />
-                            Admin Dashboard
+                            Administration
                           </Link>
                         </DropdownMenuItem>
                       )}

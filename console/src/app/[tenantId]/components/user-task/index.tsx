@@ -149,13 +149,13 @@ export default function UserTask({
         <div className="grid grid-cols-1 gap-3">
           <InfoItem
             icon={ClipboardList}
-            label="UserTask ID"
+            label="Task ID"
             value={userTask.id}
             copyable
           />
           <InfoItem
             icon={Workflow}
-            label="Workflow Run"
+            label="Workflow"
             value={userTask.wfRunId}
             copyable
           />

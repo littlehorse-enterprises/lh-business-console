@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Card } from "@littlehorse-enterprises/ui-library/card";
 import { ClipboardList, Clock, Workflow, CheckCircle2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -18,6 +19,7 @@ import { CaseTable } from "./case-table";
 import { PreviewSelect } from "./preview-select";
 import { PreviewShell, viewNames, type View } from "./preview-shell";
 import { ProcessTable } from "./process-table";
+import { semanticColors } from "./semantic-colors";
 
 export default function HomePreview() {
   const [view, setView] = useState<View>("overview");
@@ -70,6 +72,9 @@ export default function HomePreview() {
       ...history,
       [item.id]: [
         {
+          kind: approved
+            ? ("approved" as const)
+            : ("changes-requested" as const),
           action: approved
             ? "Review approved by Alex Morgan"
             : "Changes requested by Alex Morgan",
@@ -94,7 +99,8 @@ export default function HomePreview() {
     );
     if (approved) completedIds.current.add(item.id);
     setSelectedCase(null);
-    toast.success(
+    const notify = approved ? toast.success : toast.info;
+    notify(
       approved ? `Task completed: ${item.id}` : `Changes requested: ${item.id}`,
       {
         description: approved
@@ -110,24 +116,28 @@ export default function HomePreview() {
       value: 146,
       detail: "Across 3 processes",
       icon: Workflow,
+      tone: "info" as const,
     },
     {
       label: "Needs attention",
       value: attentionCount,
       detail: `${taskCount} assigned to you`,
       icon: ClipboardList,
+      tone: "warning" as const,
     },
     {
       label: "Completed",
       value: completed.toLocaleString(),
       detail: `Last ${period} days`,
       icon: CheckCircle2,
+      tone: "success" as const,
     },
     {
       label: "Avg. turnaround",
       value: `${period === "7" ? "2.4" : "2.7"} days`,
       detail: "Customer onboarding",
       icon: Clock,
+      tone: null,
     },
   ];
 
@@ -152,18 +162,35 @@ export default function HomePreview() {
       </div>
       {(view === "overview" || view === "metrics") && (
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {statistics.map(({ label, value, detail, icon: Icon }) => (
+          {statistics.map(({ label, value, detail, icon: Icon, tone }) => (
             <Card
               key={label}
-              className="gap-0 rounded-lg border-border p-4 shadow-none"
+              className={cn(
+                "gap-0 rounded-lg border-border p-4 shadow-none",
+                tone && semanticColors[tone].surface,
+              )}
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-muted-foreground">
                   {label}
                 </p>
-                <Icon className="size-4 text-muted-foreground" />
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-md",
+                    tone
+                      ? semanticColors[tone].icon
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Icon className="size-4" />
+                </span>
               </div>
-              <p className="mt-3 text-2xl font-semibold tabular-nums">
+              <p
+                className={cn(
+                  "mt-3 text-2xl font-semibold tabular-nums",
+                  tone && semanticColors[tone].text,
+                )}
+              >
                 {value}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{detail}</p>

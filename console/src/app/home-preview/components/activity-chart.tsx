@@ -33,7 +33,7 @@ export function ActivityChart({
               className="relative flex h-full min-w-0 flex-1 items-end justify-center"
             >
               <div
-                className="relative w-full max-w-10 rounded-t-sm bg-primary"
+                className="relative w-full max-w-10 rounded-t-sm bg-success/80"
                 style={{ height: `${(value / Math.max(...values)) * 100}%` }}
               >
                 <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs tabular-nums text-muted-foreground">

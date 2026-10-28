@@ -39,7 +39,7 @@ Open <http://127.0.0.1:3100/home-preview>.
 - **Metrics:** switch between 7- and 30-day illustrative reports and compare
   process turnaround times. In-progress and attention counts are current-state
   snapshots; completion counts and turnaround use the selected reporting period.
-- **About this concept:** the scope and questions for the next team discussion.
+- **Prototype details:** sample-data and implementation scope.
 
 Task forms and people/access appear as planned navigation ideas. There is no
 workflow designer, template builder, access-control implementation, or live
@@ -69,6 +69,26 @@ resource names and tables for process counts, case stages, ownership, and due
 dates. The custom palette, decorative process cards, slogans, and hard-coded
 trend percentage have been removed. The preview supports the existing light and
 dark themes; remaining small labels use the standard `text-xs` size.
+
+### Color roles
+
+Color communicates status and ownership across the page. Surfaces remain neutral;
+soft fills and compact indicators carry the meaning. Existing LittleHorse primary
+amber still identifies navigation selections and primary actions.
+
+| Color   | Meaning                                  | Uses                                                                                                                  |
+| ------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Blue    | Work in progress and personal assignment | Active-process summary, in-progress badges, assigned-to-you labels, and the assigned review form                      |
+| Amber   | Human attention or a pending review      | Attention summary, per-process attention counts, pending-review badges, and the current stage when review is required |
+| Green   | Completion or approval                   | Completion summary, completed counts, completion chart, finished tracker steps, and approved review events            |
+| Red     | Overdue work                             | Overdue status, overdue due-date text, and the current stage of an overdue case                                       |
+| Neutral | Context without a performance judgment   | Turnaround time, pending future stages, case references, and metadata                                                 |
+
+These roles are shared in `components/semantic-colors.ts` and use the existing
+success, warning, destructive, and blue palette families. Every colored state
+also has a text label, count, or icon. The turnaround value has no target in the
+fixtures, so its color makes no claim that it is good or bad. Light and dark
+variants preserve the same meanings.
 
 ## Basis in the October 26 recording
 

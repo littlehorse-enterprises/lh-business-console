@@ -9,13 +9,19 @@ import {
   SheetTitle,
 } from "@littlehorse-enterprises/ui-library/sheet";
 import { Textarea } from "@littlehorse-enterprises/ui-library/textarea";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, UserRound } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { processes, type BusinessCase } from "../data";
 import { PreviewSelect } from "./preview-select";
+import { CaseStatus } from "./case-status";
+import { semanticColors } from "./semantic-colors";
 
-export type ReviewEvent = { action: string; note: string };
+export type ReviewEvent = {
+  action: string;
+  note: string;
+  kind: "approved" | "changes-requested";
+};
 
 export function CaseDetails({
   item,
@@ -67,6 +73,8 @@ function CaseContent({
   const [decision, setDecision] = useState("approve");
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState(false);
+  const overdue = item.attention && item.due.includes("overdue");
+  const currentTone = overdue ? "danger" : item.attention ? "warning" : "info";
   const details = [
     ["Case reference", item.id],
     ["Customer / request", item.name],
@@ -80,16 +88,7 @@ function CaseContent({
         <SheetTitle className="text-xl">{item.name}</SheetTitle>
         <SheetDescription>{process.name}</SheetDescription>
       </SheetHeader>
-      <Badge
-        variant="outline"
-        className={
-          item.attention
-            ? "border-primary/40 bg-primary/10"
-            : "text-muted-foreground"
-        }
-      >
-        {item.attention ? "Needs attention" : "In progress"}
-      </Badge>
+      <CaseStatus item={item} />
       <section aria-label="Process stages">
         <h3 className="mb-4 text-sm font-semibold">Process Stages</h3>
         <ol>
@@ -102,16 +101,21 @@ function CaseContent({
                 className={cn(
                   "z-10 flex size-7 shrink-0 items-center justify-center rounded-full border text-xs",
                   index < item.stage
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? semanticColors.success.badge
                     : index === item.stage
-                      ? "border-primary bg-primary/10 font-semibold"
+                      ? cn("font-semibold", semanticColors[currentTone].badge)
                       : "border-border bg-background text-muted-foreground",
                 )}
               >
                 {index < item.stage ? <Check className="size-4" /> : index + 1}
               </span>
               {index < process.stages.length - 1 && (
-                <span className="absolute top-7 bottom-0 left-3.5 border-l border-border" />
+                <span
+                  className={cn(
+                    "absolute top-7 bottom-0 left-3.5 border-l",
+                    index < item.stage ? "border-success/40" : "border-border",
+                  )}
+                />
               )}
               <div className="pt-0.5">
                 <p
@@ -119,6 +123,7 @@ function CaseContent({
                     "text-sm",
                     index === item.stage && "font-semibold",
                     index > item.stage && "text-muted-foreground",
+                    index < item.stage && semanticColors.success.text,
                   )}
                 >
                   {stage}
@@ -132,7 +137,13 @@ function CaseContent({
                 </p>
               </div>
               {index === item.stage && (
-                <Badge variant="secondary" className="ml-auto font-normal">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "ml-auto font-normal",
+                    semanticColors[currentTone].badge,
+                  )}
+                >
                   Current
                 </Badge>
               )}
@@ -149,14 +160,27 @@ function CaseContent({
               className="flex justify-between gap-4 px-4 py-3 text-sm"
             >
               <dt className="shrink-0 text-muted-foreground">{label}</dt>
-              <dd className="text-right break-words">{value}</dd>
+              <dd
+                className={cn(
+                  "text-right break-words",
+                  label === "Responsible person" &&
+                    item.mine &&
+                    semanticColors.info.text,
+                  label === "Due" && overdue && semanticColors.danger.text,
+                )}
+              >
+                {value}
+              </dd>
             </div>
           ))}
         </dl>
       </section>
       {item.mine && item.attention && (
         <form
-          className="space-y-4 rounded-lg border border-border p-4"
+          className={cn(
+            "space-y-4 rounded-lg border p-4",
+            semanticColors.info.surface,
+          )}
           onSubmit={(event) => {
             event.preventDefault();
             if (!note.trim()) {
@@ -166,7 +190,15 @@ function CaseContent({
             onReview(item, decision, note.trim());
           }}
         >
-          <h3 className="text-sm font-semibold">Assigned Review</h3>
+          <h3
+            className={cn(
+              "flex items-center gap-2 text-sm font-semibold",
+              semanticColors.info.text,
+            )}
+          >
+            <UserRound aria-hidden className="size-4" />
+            Assigned Review
+          </h3>
           <div className="space-y-2">
             <Label>Decision</Label>
             <PreviewSelect
@@ -214,7 +246,21 @@ function CaseContent({
         <div className="space-y-4">
           {history.map((event, index) => (
             <div key={index} className="flex gap-3">
-              <Check className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              {event.kind === "approved" ? (
+                <Check
+                  className={cn(
+                    "mt-0.5 size-4 shrink-0",
+                    semanticColors.success.text,
+                  )}
+                />
+              ) : (
+                <Clock
+                  className={cn(
+                    "mt-0.5 size-4 shrink-0",
+                    semanticColors.warning.text,
+                  )}
+                />
+              )}
               <div>
                 <p className="text-sm">{event.action}</p>
                 <p className="mt-1 text-xs text-muted-foreground">

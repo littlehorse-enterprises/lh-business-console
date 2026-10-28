@@ -15,7 +15,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@littlehorse-enterprises/ui-library/tabs";
-import { Search } from "lucide-react";
+import { Search, UserRound } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CaseStatus } from "./case-status";
+import { semanticColors } from "./semantic-colors";
 import { processes, type BusinessCase } from "../data";
 import { PreviewSelect } from "./preview-select";
 
@@ -156,30 +159,33 @@ export function CaseTable({
                   </p>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={
-                      item.attention
-                        ? "whitespace-nowrap border-primary/40 bg-primary/10 font-normal"
-                        : "whitespace-nowrap font-normal text-muted-foreground"
-                    }
-                  >
-                    {item.attention ? "Needs attention" : "In progress"}
-                  </Badge>
+                  <CaseStatus item={item} />
                   <p className="mt-1 text-xs whitespace-nowrap text-muted-foreground">
                     {item.reason}
                   </p>
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
-                  {item.owner}
+                  <p>{item.owner}</p>
                   {item.mine && (
-                    <p className="mt-1 text-xs text-muted-foreground">You</p>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "mt-1 gap-1 text-xs font-normal",
+                        semanticColors.info.badge,
+                      )}
+                    >
+                      <UserRound aria-hidden className="size-3" />
+                      You
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell
                   className={
                     item.attention && item.due.includes("overdue")
-                      ? "whitespace-nowrap text-destructive"
+                      ? cn(
+                          "whitespace-nowrap font-medium",
+                          semanticColors.danger.text,
+                        )
                       : "whitespace-nowrap text-muted-foreground"
                   }
                 >

@@ -8,6 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@littlehorse-enterprises/ui-library/table";
+import { semanticColors } from "./semantic-colors";
+import { cn } from "@/lib/utils";
 import { processes, type BusinessCase, type ProcessId } from "../data";
 
 export function ProcessTable({
@@ -55,17 +57,34 @@ export function ProcessTable({
                   {process.name}
                 </Button>
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell
+                className={cn(
+                  "text-right font-medium tabular-nums",
+                  semanticColors.info.text,
+                )}
+              >
                 {process.active}
               </TableCell>
               <TableCell className="text-right tabular-nums">
-                {
-                  cases.filter(
-                    (item) => item.processId === process.id && item.attention,
-                  ).length
-                }
+                <span
+                  className={cn(
+                    "inline-flex min-w-7 justify-center rounded-md border px-2 py-0.5 text-xs font-medium",
+                    semanticColors.warning.badge,
+                  )}
+                >
+                  {
+                    cases.filter(
+                      (item) => item.processId === process.id && item.attention,
+                    ).length
+                  }
+                </span>
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell
+                className={cn(
+                  "text-right font-medium tabular-nums",
+                  semanticColors.success.text,
+                )}
+              >
                 {process.completed[periodIndex]}
               </TableCell>
               <TableCell className="text-right tabular-nums whitespace-nowrap">

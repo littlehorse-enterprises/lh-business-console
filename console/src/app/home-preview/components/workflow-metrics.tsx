@@ -1,31 +1,28 @@
 import { Card } from "@littlehorse-enterprises/ui-library/card";
 
-export function ActivityChart({
+export function WorkflowMetrics({
   values,
-  completed,
-  period,
+  total,
+  previous,
 }: {
   values: number[];
-  completed: number;
-  period: string;
+  total: number;
+  previous: boolean;
 }) {
-  const labels =
-    period === "7"
-      ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-      : ["1–4", "5–8", "9–12", "13–16", "17–20", "21–24", "25–30"];
+  const labels = ["1–4", "5–8", "9–12", "13–16", "17–20", "21–24", "25–30"];
   return (
     <Card className="gap-0 rounded-lg border-border py-0 shadow-none">
       <div className="border-b border-border px-4 py-3">
-        <h2 className="text-base font-semibold">Completed Processes</h2>
+        <h2 className="text-base font-semibold">Delivered orders</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          {completed.toLocaleString()} in the last {period} days
+          {total} · {previous ? "Previous 30 days" : "Last 30 days"}
         </p>
       </div>
       <div className="px-5 pt-8 pb-5">
         <div
           className="flex h-40 items-end gap-3 border-b border-border"
           role="img"
-          aria-label={`${completed} completed processes. ${values.map((value, index) => `${labels[index]}: ${value}`).join(", ")}`}
+          aria-label={`${total} delivered orders. ${values.map((value, index) => `Days ${labels[index]}: ${value}`).join(", ")}`}
         >
           {values.map((value, index) => (
             <div

@@ -1,168 +1,86 @@
-// Fictional, browser-local fixtures for the home page design discussion.
-export const processes = [
-  {
-    id: "onboarding",
-    name: "Customer onboarding",
-    active: 62,
-    completed: [118, 472],
-    turnaround: "2.4 days",
-    stages: ["Application", "Document review", "Approval", "Welcome"],
-  },
-  {
-    id: "purchasing",
-    name: "Purchase approvals",
-    active: 47,
-    completed: [94, 386],
-    turnaround: "1.2 days",
-    stages: ["Request", "Manager review", "Finance approval", "Ordered"],
-  },
-  {
-    id: "invoicing",
-    name: "Invoice processing",
-    active: 37,
-    completed: [72, 310],
-    turnaround: "1.8 days",
-    stages: ["Received", "Verification", "Approval", "Payment"],
-  },
+// Sample values for the process-order example in Business Console Overview.
+export const orderStatuses = [
+  { value: "BAKING", label: "Baking" },
+  { value: "READY_FOR_PICKUP", label: "Ready for pickup" },
+  { value: "PICKED_UP", label: "Picked up" },
+  { value: "DELIVERED", label: "Delivered" },
 ] as const;
 
-export type Process = (typeof processes)[number];
-export type ProcessId = Process["id"];
-export type BusinessCase = {
+export type OrderStatus = (typeof orderStatuses)[number]["value"];
+export const workflowSpec = {
+  name: "process-order",
+  statusVariable: "order-status",
+  ordersOutForDelivery: 12,
+  delivered: [284, 246],
+  latency: ["18 min", "22 min"],
+} as const;
+
+export type WorkflowRun = {
   id: string;
-  name: string;
-  processId: ProcessId;
-  stage: number;
-  attention: boolean;
-  reason: string;
-  owner: string;
-  due: string;
-  mine: boolean;
+  orderId: string;
+  userId: string;
+  status: OrderStatus;
+  userTask: "pending" | "executed" | null;
 };
 
-export const initialCases: BusinessCase[] = [
+export const initialWorkflowRuns: WorkflowRun[] = [
   {
-    id: "ONB-1042",
-    name: "Acme Corporation",
-    processId: "onboarding",
-    stage: 1,
-    attention: true,
-    reason: "Documents need review",
-    owner: "Alex Morgan",
-    due: "Today",
-    mine: true,
+    id: "f84e82e904ef4af8bc9a1c4200001042",
+    orderId: "1042",
+    userId: "Bob",
+    status: "READY_FOR_PICKUP",
+    userTask: "pending",
   },
   {
-    id: "PUR-2081",
-    name: "Design team equipment",
-    processId: "purchasing",
-    stage: 1,
-    attention: true,
-    reason: "Waiting for your approval",
-    owner: "Alex Morgan",
-    due: "Today",
-    mine: true,
+    id: "f84e82e904ef4af8bc9a1c4200001043",
+    orderId: "1043",
+    userId: "Bob",
+    status: "READY_FOR_PICKUP",
+    userTask: "pending",
   },
   {
-    id: "PUR-2076",
-    name: "Annual software renewal",
-    processId: "purchasing",
-    stage: 2,
-    attention: true,
-    reason: "Approval overdue",
-    owner: "Jamie Chen",
-    due: "1 day overdue",
-    mine: false,
+    id: "f84e82e904ef4af8bc9a1c4200001044",
+    orderId: "1044",
+    userId: "Bob",
+    status: "PICKED_UP",
+    userTask: "pending",
   },
   {
-    id: "ONB-1038",
-    name: "Northstar Studio",
-    processId: "onboarding",
-    stage: 2,
-    attention: true,
-    reason: "Decision needed",
-    owner: "Sam Taylor",
-    due: "Today",
-    mine: false,
+    id: "f84e82e904ef4af8bc9a1c4200001045",
+    orderId: "1045",
+    userId: "Bob",
+    status: "BAKING",
+    userTask: null,
   },
   {
-    id: "INV-3064",
-    name: "Brightside · INV-2409",
-    processId: "invoicing",
-    stage: 1,
-    attention: true,
-    reason: "Verify invoice details",
-    owner: "Alex Morgan",
-    due: "Tomorrow",
-    mine: true,
+    id: "f84e82e904ef4af8bc9a1c4200001046",
+    orderId: "1046",
+    userId: "Bob",
+    status: "PICKED_UP",
+    userTask: null,
   },
   {
-    id: "PUR-2084",
-    name: "Office supplies",
-    processId: "purchasing",
-    stage: 1,
-    attention: true,
-    reason: "Budget review needed",
-    owner: "Jamie Chen",
-    due: "Tomorrow",
-    mine: false,
+    id: "f84e82e904ef4af8bc9a1c4200001047",
+    orderId: "1047",
+    userId: "Bob",
+    status: "PICKED_UP",
+    userTask: null,
   },
   {
-    id: "ONB-1045",
-    name: "Evergreen Partners",
-    processId: "onboarding",
-    stage: 1,
-    attention: true,
-    reason: "Documents need review",
-    owner: "Sam Taylor",
-    due: "Tomorrow",
-    mine: false,
+    id: "f84e82e904ef4af8bc9a1c4200001048",
+    orderId: "1048",
+    userId: "Bob",
+    status: "DELIVERED",
+    userTask: null,
   },
   {
-    id: "PUR-2087",
-    name: "Customer workshop travel",
-    processId: "purchasing",
-    stage: 2,
-    attention: true,
-    reason: "Finance approval needed",
-    owner: "Jamie Chen",
-    due: "Tomorrow",
-    mine: false,
-  },
-  {
-    id: "ONB-1040",
-    name: "Pioneer Labs",
-    processId: "onboarding",
-    stage: 3,
-    attention: false,
-    reason: "Welcome in progress",
-    owner: "Sam Taylor",
-    due: "On track",
-    mine: false,
-  },
-  {
-    id: "INV-3068",
-    name: "Atlas · INV-2412",
-    processId: "invoicing",
-    stage: 3,
-    attention: false,
-    reason: "Payment scheduled",
-    owner: "Jamie Chen",
-    due: "On track",
-    mine: false,
-  },
-  {
-    id: "PUR-2089",
-    name: "New starter equipment",
-    processId: "purchasing",
-    stage: 0,
-    attention: false,
-    reason: "Request received",
-    owner: "Sam Taylor",
-    due: "On track",
-    mine: false,
+    id: "f84e82e904ef4af8bc9a1c4200001049",
+    orderId: "1049",
+    userId: "Bob",
+    status: "DELIVERED",
+    userTask: null,
   },
 ];
 
-export const weeklyActivity = [32, 48, 37, 54, 61, 28, 24];
-export const monthlyActivity = [142, 168, 195, 211, 158, 174, 120];
+export const deliveredOrders = [32, 48, 37, 54, 61, 28, 24];
+export const previousDeliveredOrders = [25, 42, 31, 49, 56, 23, 20];

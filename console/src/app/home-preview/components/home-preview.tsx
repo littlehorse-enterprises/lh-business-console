@@ -2,160 +2,154 @@
 
 import { cn } from "@/lib/utils";
 import { Card } from "@littlehorse-enterprises/ui-library/card";
-import { ClipboardList, Clock, Workflow, CheckCircle2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { CheckCircle2, ClipboardList, Clock, Truck } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
-  initialCases,
-  monthlyActivity,
-  processes,
-  weeklyActivity,
-  type BusinessCase,
-  type ProcessId,
+  deliveredOrders,
+  initialWorkflowRuns,
+  orderStatuses,
+  previousDeliveredOrders,
+  workflowSpec,
+  type WorkflowRun,
 } from "../data";
-import { ActivityChart } from "./activity-chart";
-import { CaseDetails, type ReviewEvent } from "./case-details";
-import { CaseTable } from "./case-table";
 import { PreviewSelect } from "./preview-select";
 import { PreviewShell, viewNames, type View } from "./preview-shell";
-import { ProcessTable } from "./process-table";
 import { semanticColors } from "./semantic-colors";
+import { WorkflowMetrics } from "./workflow-metrics";
+import { WorkflowRunTable } from "./workflow-run-table";
+import {
+  WorkflowRunView,
+  type WorkflowHistoryEntry,
+} from "./workflow-run-view";
+import { WorkflowTable } from "./workflow-table";
 
 export default function HomePreview() {
   const [view, setView] = useState<View>("overview");
-  const [period, setPeriod] = useState("7");
+  const [period, setPeriod] = useState("current");
   const [query, setQuery] = useState("");
-  const [processFilter, setProcessFilter] = useState("all");
-  const [attentionOnly, setAttentionOnly] = useState(true);
-  const [cases, setCases] = useState(initialCases);
-  const [selectedCase, setSelectedCase] = useState<BusinessCase | null>(null);
-  const [caseActivity, setCaseActivity] = useState<
-    Record<string, ReviewEvent[]>
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [runs, setRuns] = useState(initialWorkflowRuns);
+  const [selectedRun, setSelectedRun] = useState<WorkflowRun | null>(null);
+  const [history, setHistory] = useState<
+    Record<string, WorkflowHistoryEntry[]>
   >({});
-  const completedIds = useRef(new Set<string>());
-  const attentionCount = cases.filter((item) => item.attention).length;
-  const taskCount = cases.filter((item) => item.mine && item.attention).length;
-  const periodIndex = period === "7" ? 0 : 1;
-  const completed = processes.reduce(
-    (sum, process) => sum + process.completed[periodIndex],
-    0,
-  );
-  const activity = period === "7" ? weeklyActivity : monthlyActivity;
-  const filteredCases = cases.filter((item) => {
-    const process = processes.find((process) => process.id === item.processId)!;
-    return (
-      (view !== "tasks" || (item.mine && item.attention)) &&
-      (!attentionOnly || item.attention || view === "tasks") &&
-      (processFilter === "all" || item.processId === processFilter) &&
-      `${item.name} ${item.id} ${item.owner} ${process.name} ${item.reason}`
+  const pendingTasks = runs.filter((run) => run.userTask === "pending").length;
+  const periodIndex = period === "current" ? 0 : 1;
+  const newlyDelivered = runs.filter(
+    (run) => run.status === "DELIVERED" && run.userTask === "executed",
+  ).length;
+  const totalDelivered =
+    workflowSpec.delivered[periodIndex] +
+    (periodIndex === 0 ? newlyDelivered : 0);
+  const outForDelivery =
+    workflowSpec.ordersOutForDelivery +
+    runs.filter((run) => run.status === "PICKED_UP").length -
+    initialWorkflowRuns.filter((run) => run.status === "PICKED_UP").length;
+  const activity =
+    periodIndex === 0
+      ? deliveredOrders.map((value, index) =>
+          index === deliveredOrders.length - 1 ? value + newlyDelivered : value,
+        )
+      : previousDeliveredOrders;
+  const filteredRuns = runs.filter(
+    (run) =>
+      (view !== "tasks" || run.userTask === "pending") &&
+      (!pendingOnly || run.userTask === "pending" || view === "tasks") &&
+      (statusFilter === "all" || run.status === statusFilter) &&
+      `${run.id} ${run.orderId} ${run.userId} ${run.status}`
         .toLowerCase()
-        .includes(query.toLowerCase().trim())
-    );
-  });
+        .includes(query.toLowerCase().trim()),
+  );
 
   function navigate(next: View) {
     setView(next);
-    setProcessFilter("all");
+    setStatusFilter("all");
     setQuery("");
-    setAttentionOnly(true);
+    setPendingOnly(false);
   }
 
-  function selectProcess(id: ProcessId) {
-    navigate("processes");
-    setProcessFilter(id);
-    setAttentionOnly(false);
-  }
-
-  function reviewTask(item: BusinessCase, decision: string, note: string) {
-    const approved = decision === "approve";
-    setCaseActivity((history) => ({
-      ...history,
-      [item.id]: [
-        {
-          kind: approved
-            ? ("approved" as const)
-            : ("changes-requested" as const),
-          action: approved
-            ? "Review approved by Alex Morgan"
-            : "Changes requested by Alex Morgan",
-          note,
-        },
-        ...(history[item.id] || []),
-      ],
+  function executeUserTask(run: WorkflowRun) {
+    const index = orderStatuses.findIndex(
+      (status) => status.value === run.status,
+    );
+    const status =
+      orderStatuses[Math.min(index + 1, orderStatuses.length - 1)].value;
+    const entries: WorkflowHistoryEntry[] = [
+      { type: "User Task", message: "Executed" },
+    ];
+    if (status === "PICKED_UP")
+      entries.push({
+        type: "WorkflowEvent",
+        name: "order-picked-up",
+        message: "Your order was picked up just now.",
+      });
+    if (status === "DELIVERED")
+      entries.push({
+        type: "WorkflowEvent",
+        name: "order-delivered",
+        message: "Your order was delivered at Apartment Building just now.",
+      });
+    setHistory((current) => ({
+      ...current,
+      [run.id]: [...entries, ...(current[run.id] || [])],
     }));
-    setCases((items) =>
-      items.map((current) =>
-        current.id !== item.id
-          ? current
-          : approved
-            ? {
-                ...current,
-                attention: false,
-                stage: Math.min(current.stage + 1, 3),
-                reason: "Moving to the next stage",
-              }
-            : { ...current, reason: "Changes requested" },
+    setRuns((current) =>
+      current.map((item) =>
+        item.id === run.id ? { ...item, status, userTask: "executed" } : item,
       ),
     );
-    if (approved) completedIds.current.add(item.id);
-    setSelectedCase(null);
-    const notify = approved ? toast.success : toast.info;
-    notify(
-      approved ? `Task completed: ${item.id}` : `Changes requested: ${item.id}`,
-      {
-        description: approved
-          ? "The sample case advanced to the next stage."
-          : "The sample task remains open.",
-      },
-    );
+    setSelectedRun(null);
+    toast.success("User task executed", { description: `WfRun: ${run.id}` });
   }
 
   const statistics = [
     {
-      label: "In progress",
-      value: 146,
-      detail: "Across 3 processes",
-      icon: Workflow,
+      label: "Orders Out For Delivery",
+      value: outForDelivery,
+      detail: "order-status: PICKED_UP",
+      icon: Truck,
       tone: "info" as const,
     },
     {
-      label: "Needs attention",
-      value: attentionCount,
-      detail: `${taskCount} assigned to you`,
+      label: "Pending user tasks",
+      value: pendingTasks,
+      detail: "user-id: Bob",
       icon: ClipboardList,
       tone: "warning" as const,
     },
     {
-      label: "Completed",
-      value: completed.toLocaleString(),
-      detail: `Last ${period} days`,
+      label: "Delivered orders",
+      value: totalDelivered.toLocaleString(),
+      detail: periodIndex === 0 ? "Last 30 days" : "Previous 30 days",
       icon: CheckCircle2,
       tone: "success" as const,
     },
     {
-      label: "Avg. turnaround",
-      value: `${period === "7" ? "2.4" : "2.7"} days`,
-      detail: "Customer onboarding",
+      label: "Latency",
+      value: workflowSpec.latency[periodIndex],
+      detail: "Ready for pickup → Delivered",
       icon: Clock,
       tone: null,
     },
   ];
 
   return (
-    <PreviewShell view={view} onNavigate={navigate} taskCount={taskCount}>
+    <PreviewShell view={view} onNavigate={navigate} taskCount={pendingTasks}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">
           {viewNames[view]}
         </h1>
         {view !== "tasks" && (
           <PreviewSelect
-            label="Reporting period"
+            label="Metrics window"
             value={period}
             onChange={setPeriod}
-            className="w-44"
+            className="w-48"
             options={[
-              { value: "7", label: "Last 7 days" },
-              { value: "30", label: "Last 30 days" },
+              { value: "current", label: "Last 30 days" },
+              { value: "previous", label: "Previous 30 days" },
             ]}
           />
         )}
@@ -199,49 +193,45 @@ export default function HomePreview() {
         </div>
       )}
       {view !== "tasks" && (
-        <ProcessTable
-          cases={cases}
-          periodIndex={periodIndex}
-          onSelect={selectProcess}
-          onViewAll={
-            view === "overview" ? () => navigate("processes") : undefined
-          }
+        <WorkflowTable
+          pendingTasks={pendingTasks}
+          ordersOutForDelivery={outForDelivery}
+          delivered={totalDelivered}
+          latency={workflowSpec.latency[periodIndex]}
+          onSelect={() => navigate("workflows")}
         />
       )}
       {view !== "metrics" && (
-        <CaseTable
-          cases={filteredCases}
+        <WorkflowRunTable
+          runs={filteredRuns}
           query={query}
           onQuery={setQuery}
-          processFilter={processFilter}
-          onProcessFilter={setProcessFilter}
-          attentionOnly={attentionOnly}
-          onAttentionOnly={setAttentionOnly}
-          attentionCount={attentionCount}
-          sampleCount={cases.length}
-          myTasks={view === "tasks"}
-          onOpen={setSelectedCase}
+          statusFilter={statusFilter}
+          onStatusFilter={setStatusFilter}
+          pendingOnly={pendingOnly}
+          onPendingOnly={setPendingOnly}
+          pendingTasks={pendingTasks}
+          sampleCount={runs.length}
+          userTasks={view === "tasks"}
+          onOpen={setSelectedRun}
           limit={view === "overview" ? 4 : undefined}
           onViewAll={
-            view === "overview" ? () => navigate("processes") : undefined
+            view === "overview" ? () => navigate("workflows") : undefined
           }
         />
       )}
       {(view === "overview" || view === "metrics") && (
-        <ActivityChart
+        <WorkflowMetrics
           values={activity}
-          completed={completed}
-          period={period}
+          total={totalDelivered}
+          previous={periodIndex === 1}
         />
       )}
-      <CaseDetails
-        item={selectedCase}
-        onClose={() => setSelectedCase(null)}
-        onReview={reviewTask}
-        history={selectedCase ? caseActivity[selectedCase.id] || [] : []}
-        advanced={
-          selectedCase ? completedIds.current.has(selectedCase.id) : false
-        }
+      <WorkflowRunView
+        run={selectedRun}
+        onClose={() => setSelectedRun(null)}
+        onExecute={executeUserTask}
+        history={selectedRun ? history[selectedRun.id] || [] : []}
       />
     </PreviewShell>
   );

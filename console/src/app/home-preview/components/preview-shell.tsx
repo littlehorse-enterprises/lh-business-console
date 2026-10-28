@@ -24,16 +24,16 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-export type View = "overview" | "processes" | "tasks" | "metrics";
+export type View = "overview" | "workflows" | "tasks" | "metrics";
 export const viewNames: Record<View, string> = {
-  overview: "Overview",
-  processes: "Processes",
-  tasks: "My Tasks",
+  overview: "Workflow Overview",
+  workflows: "Workflows",
+  tasks: "User Tasks",
   metrics: "Metrics",
 };
 const navigation = [
   { id: "overview", icon: Home },
-  { id: "processes", icon: Workflow },
+  { id: "workflows", icon: Workflow },
   { id: "tasks", icon: ClipboardList },
   { id: "metrics", icon: BarChart3 },
 ] as const;
@@ -97,19 +97,17 @@ export function PreviewShell({
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden border-r border-border pr-4 text-sm text-muted-foreground sm:inline">
-            Tenant: <span className="font-medium text-foreground">acme</span>
+            Tenant: <span className="font-medium text-foreground">example</span>
           </span>
           <ThemeToggle />
           <div className="flex items-center gap-2">
             <div className="hidden text-right md:block">
-              <p className="text-sm font-medium">Alex Morgan</p>
-              <p className="text-xs text-muted-foreground">
-                Operations manager
-              </p>
+              <p className="text-sm font-medium">Bob</p>
+              <p className="text-xs text-muted-foreground">Business user</p>
             </div>
             <Avatar className="size-9">
               <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                AM
+                B
               </AvatarFallback>
             </Avatar>
           </div>
@@ -145,7 +143,7 @@ export function PreviewShell({
             ))}
             <div className="mt-5 hidden border-t border-border pt-4 md:block">
               <p className="mb-2 px-3 text-xs font-medium text-muted-foreground">
-                Administration
+                Configuration
               </p>
               <Button
                 variant="ghost"
@@ -153,7 +151,7 @@ export function PreviewShell({
                 className="w-full justify-start gap-3 text-muted-foreground"
               >
                 <FileText className="size-4" />
-                Task Forms
+                User Task Forms
               </Button>
               <Button
                 variant="ghost"
@@ -173,7 +171,7 @@ export function PreviewShell({
               onClick={() => setDetailsOpen(true)}
             >
               <Info className="size-4" />
-              Prototype details
+              Business Console
             </Button>
           </nav>
         </aside>
@@ -184,7 +182,7 @@ export function PreviewShell({
           <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>
-                acme <span className="mx-2">/</span> {viewNames[view]}
+                example <span className="mx-2">/</span> {viewNames[view]}
               </span>
               <span>Preview · Sample data · Resets on reload</span>
             </div>
@@ -198,13 +196,13 @@ export function PreviewShell({
           className="hover:underline"
           onClick={() => setDetailsOpen(true)}
         >
-          Prototype details
+          Business Console
         </button>
       </footer>
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Prototype details</DialogTitle>
+            <DialogTitle>Business Console</DialogTitle>
             <DialogDescription>
               Business Console home page visualization for initial design
               discussions.
@@ -212,13 +210,14 @@ export function PreviewShell({
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Processes, cases, metrics, and users are sample data. Task actions
-              update this browser session and reset on reload.
+              Workflows, WfRuns, user tasks, public variables, and metrics are
+              sample data. Executing a user task updates this preview and resets
+              on reload.
             </p>
             <p>
-              The case list contains a subset of the aggregate process totals.
-              Task form administration, permissions, and backend integration are
-              outside this preview.
+              The WfRun list is a sample of the workflow totals. User Task
+              Forms, permissions, and backend integration are outside this
+              preview.
             </p>
             <p>
               Uses the existing LittleHorse UI library and theme, with the

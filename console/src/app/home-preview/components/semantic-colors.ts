@@ -1,4 +1,4 @@
-// Reuse these roles across summaries, tables, charts, and the case tracker.
+// Reuse these roles across summaries, tables, charts, and the workflow status tracker.
 // Amber primary controls remain the LittleHorse brand/selection color.
 export const semanticColors = {
   info: {
@@ -20,12 +20,5 @@ export const semanticColors = {
     badge: "border-success/30 bg-success/10 text-green-800 dark:text-green-200",
     text: "text-green-800 dark:text-green-200",
     icon: "bg-success/15 text-green-800 dark:text-green-200",
-  },
-  danger: {
-    surface: "border-destructive/30 bg-destructive/5",
-    badge:
-      "border-destructive/30 bg-destructive/10 text-red-800 dark:text-red-200",
-    text: "text-red-700 dark:text-red-300",
-    icon: "bg-destructive/10 text-red-700 dark:text-red-300",
   },
 } as const;

@@ -36,7 +36,7 @@ Open <http://127.0.0.1:3100/home-preview>.
 - **My tasks:** the sample user's outstanding reviews. Approve a review with a
   note to advance the case and update its attention count, or request changes
   and see the note in case history. Changes last until reload.
-- **Insights:** switch between 7- and 30-day illustrative reports and compare
+- **Metrics:** switch between 7- and 30-day illustrative reports and compare
   process turnaround times. In-progress and attention counts are current-state
   snapshots; completion counts and turnaround use the selected reporting period.
 - **About this concept:** the scope and questions for the next team discussion.
@@ -45,6 +45,30 @@ Task forms and people/access appear as planned navigation ideas. There is no
 workflow designer, template builder, access-control implementation, or live
 report query engine in this prototype. The home concept is deliberately a
 separate route so existing task-management screens remain usable.
+
+## LittleHorse styling
+
+The preview uses the installed `@littlehorse-enterprises/ui-library` components
+and semantic theme tokens. Buttons, cards, tables, badges, inputs, selects, tabs,
+dialogs, and the case-detail sheet come from the same library used by User Tasks
+Bridge and Saddle. The theme toggle is reused from the existing console.
+
+Reference patterns reviewed for this revision:
+
+- User Tasks Bridge: `console/src/app/[tenantId]/components/header.tsx`, task
+  filters, task cards, and `console/src/app/globals.css`.
+- Saddle: `ui/src/components/shared/header/Header.tsx`,
+  `ui/src/components/shared/sidebar/SidebarContent.tsx`, and
+  `ui/src/components/shared/ResourceListHeader.tsx` in `lh-saddle`.
+- Dashboard: its tenant header, Inter typography, table component, and neutral
+  theme in `littlehorse/dashboard`.
+
+The header and neutral bordered sidebar follow Saddle's structure. The amber
+active state and form controls use the shared library. The page uses direct
+resource names and tables for process counts, case stages, ownership, and due
+dates. The custom palette, decorative process cards, slogans, and hard-coded
+trend percentage have been removed. The preview supports the existing light and
+dark themes; remaining small labels use the standard `text-xs` size.
 
 ## Basis in the October 26 recording
 
@@ -61,8 +85,9 @@ mentioned in the meeting. The relevant discussion points were:
 | 34:00–36:27      | Explore filtering and reports; detailed query/report configuration remains future work.                                                                     |
 | 41:56–43:02      | Business metrics may combine multiple workflow specifications. The overview totals therefore span business processes.                                       |
 
-The example business processes, visual style, fixture values, and information
-hierarchy are proposals for discussion, not settled requirements from the call.
+The example business processes, fixture values, and information hierarchy are
+proposals for discussion, not settled requirements from the call. The user has
+requested styling consistent with existing LittleHorse projects.
 
 ## Additional context: overview proposal
 
@@ -79,7 +104,7 @@ that view to understand progress and complete their human steps.
 
 | Proposal topic                                   | Implication for the concept                                                                                                                       | Current coverage / discussion gap                                                                                                                                                            |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workflow overview (p. 2)                         | Show counts in a business status, time between named statuses, business-key search, and period-over-period outcomes.                              | The prototype has portfolio counts, case search, completion trends, and end-to-end turnaround. Per-status counts and transition latency are not yet visualized.                              |
+| Workflow overview (p. 2)                         | Show counts in a business status, time between named statuses, business-key search, and period-over-period outcomes.                              | The prototype has portfolio counts, case search, completion activity, and end-to-end turnaround. Per-status counts and transition latency are not yet visualized.                            |
 | Workflow run view (pp. 2-3)                      | Drive the tracker from a configured status variable and expose only the configured business fields.                                               | The tracker and business details use fixtures. Their mapping to status values and public workflow variables remains to be defined.                                                           |
 | Important-step history (p. 3)                    | A case timeline combines pending/completed human tasks, meaningful WorkflowEvents, and agent executions.                                          | The current timeline illustrates human reviews and process start. WorkflowEvent messages and agent activity are additional design work.                                                      |
 | Agent executions (p. 1)                          | Give business users and auditors a readable view of available agent execution details and tool calls.                                             | No agent execution view exists in this prototype. Decide whether it is nested in a case timeline, a separate screen, or both, and which recorded information can be shown.                   |
@@ -131,4 +156,5 @@ The proxy regression test verifies that the exact preview route is public and
 that tenant routes, preview subpaths, and similar prefixes retain authentication.
 Manual browser checks cover navigation, combined filtering, empty results,
 reporting periods, the case tracker, required review notes, sample completion,
-request-changes history, Escape dismissal, and a 390px mobile viewport.
+request-changes history, Escape dismissal, light/dark themes, a 1440px desktop
+viewport, and a 390px mobile viewport.

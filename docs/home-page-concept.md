@@ -51,27 +51,64 @@ separate route so existing task-management screens remain usable.
 The recording is product context, not an instruction to carry out every action
 mentioned in the meeting. The relevant discussion points were:
 
-| Approximate time | Design implication                                                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 03:20–07:15      | Design for business people; express progress as business stages rather than engine nodes. Phase one reads existing processes. |
-| 07:22–09:51      | Show metrics that managers and business analysts can interpret, such as time to complete a business stage.                    |
-| 15:26–18:53      | Start with a home page and sidebar in the actual frontend; use the visualization to discuss the backend data it will need.    |
-| 19:26–21:28      | Give assigned user tasks a place in the sidebar; the existing task-oriented roles need further design.                        |
-| 29:43–31:23      | Use a branch of the repository for an initial UI that both collaborators can change. This is a discovery artifact.            |
-| 34:00–36:27      | Explore filtering and reports; detailed query/report configuration remains future work.                                       |
-| 41:56–43:02      | Business metrics may combine multiple workflow specifications. The overview totals therefore span business processes.         |
+| Approximate time | Design implication                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 03:20–07:15      | Design for business people; express progress as business stages rather than engine nodes. Phase one focuses on existing processes and assigned human tasks. |
+| 07:22–09:51      | Show metrics that managers and business analysts can interpret, such as time to complete a business stage.                                                  |
+| 15:26–18:53      | Start with a home page and sidebar in the actual frontend; use the visualization to discuss the backend data it will need.                                  |
+| 19:26–21:28      | Give assigned user tasks a place in the sidebar; the existing task-oriented roles need further design.                                                      |
+| 29:43–31:23      | Use a branch of the repository for an initial UI that both collaborators can change. This is a discovery artifact.                                          |
+| 34:00–36:27      | Explore filtering and reports; detailed query/report configuration remains future work.                                                                     |
+| 41:56–43:02      | Business metrics may combine multiple workflow specifications. The overview totals therefore span business processes.                                       |
 
 The example business processes, visual style, fixture values, and information
 hierarchy are proposals for discussion, not settled requirements from the call.
+
+## Additional context: overview proposal
+
+The user supplied the five-page **Business Console Overview** PDF after the
+first prototype. It describes itself as Colt's opinionated proposal. The points
+below are product context; feature priority, configuration formats, and
+architecture choices still need team agreement.
+
+The console combines operating business processes with business analytics.
+Engineers configure a business view of selected workflows: which variable defines
+status, what each status means, which variables to expose, how workflow events
+become readable messages, and which metrics to display. Business users then use
+that view to understand progress and complete their human steps.
+
+| Proposal topic                                   | Implication for the concept                                                                                                                       | Current coverage / discussion gap                                                                                                                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow overview (p. 2)                         | Show counts in a business status, time between named statuses, business-key search, and period-over-period outcomes.                              | The prototype has portfolio counts, case search, completion trends, and end-to-end turnaround. Per-status counts and transition latency are not yet visualized.                              |
+| Workflow run view (pp. 2-3)                      | Drive the tracker from a configured status variable and expose only the configured business fields.                                               | The tracker and business details use fixtures. Their mapping to status values and public workflow variables remains to be defined.                                                           |
+| Important-step history (p. 3)                    | A case timeline combines pending/completed human tasks, meaningful WorkflowEvents, and agent executions.                                          | The current timeline illustrates human reviews and process start. WorkflowEvent messages and agent activity are additional design work.                                                      |
+| Agent executions (p. 1)                          | Give business users and auditors a readable view of available agent execution details and tool calls.                                             | No agent execution view exists in this prototype. Decide whether it is nested in a case timeline, a separate screen, or both, and which recorded information can be shown.                   |
+| Users, groups, permissions (p. 2)                | Scope visibility to permitted workflows and consider administration within a group.                                                               | The sample operations-manager persona is illustrative. People/access is a navigation idea; the role and permission model remains open.                                                       |
+| User tasks and forms (pp. 1, 4)                  | Keep task execution central and support management of task forms.                                                                                 | Sample reviews illustrate execution. Form authoring and the proposed migration to v2 user tasks remain separate work.                                                                        |
+| Workflow templates (p. 3)                        | Explore controlled self-service using templates supplied by engineers and filled in by business users.                                            | The document calls this the most ambitious feature. Template creation, configuration, and execution remain outside this initial home concept; the meeting also left template ownership open. |
+| Configuration and metrics architecture (pp. 3-4) | Explore YAML business-flow configuration, an optional configuration-provider plugin, and Diffuser-calculated metric windows.                      | The fixtures are not a configuration schema. The frontend/backend contract and deployment design still need investigation.                                                                   |
+| Product strategy (p. 5)                          | Phase one makes automated processes usable by business teams; later phases build on forms, permissions, templates, and packaged business modules. | Use the current branch to discuss daily operations first, while retaining these longer-term capabilities in the design context.                                                              |
+
+### Priorities for the next visual iteration
+
+1. Explore an order-tracking example with business-key search, a configured
+   shipping status, and shipping-to-delivery duration, matching the proposal's
+   concrete example.
+2. Make the case timeline show different event types: a pending human task, a
+   completed task, a business message from a WorkflowEvent, and agent/tool activity.
+3. Show how each process selects its visible fields and metrics. The current
+   three process cards and shared counters are illustrative examples.
+4. Discuss permission-aware home views and the placement of forms and group
+   management before expanding the navigation.
 
 ## Questions to resolve
 
 1. Which audience and role should the default home serve?
 2. Should the most prominent content be exceptions, personal tasks, or metrics?
-3. How are business stages named and mapped to one or more workflow specs?
-4. Which metrics need to aggregate across processes, and over what windows?
+3. How do configured status variables, public fields, and meaningful events map to one or more workflow specs?
+4. Which metrics describe time in a status, time between statuses, or aggregates across processes, and over what windows?
 5. What belongs in the home summary versus a separate task or process screen?
-6. Where should task-form authoring, permissions, and future templates live?
+6. Where should task-form authoring, group administration, agent execution details, and future templates live?
 
 ## Implementation boundaries
 

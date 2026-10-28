@@ -9,6 +9,7 @@ export const orderStatuses = [
 export type OrderStatus = (typeof orderStatuses)[number]["value"];
 export const workflowSpec = {
   name: "process-order",
+  displayName: "Order processing",
   statusVariable: "order-status",
   ordersOutForDelivery: 12,
   delivered: [284, 246],

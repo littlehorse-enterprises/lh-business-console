@@ -28,12 +28,12 @@ export function WorkflowTable({
   return (
     <Card className="gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
       <div className="border-b border-border px-4 py-3">
-        <h2 className="text-base font-semibold">Workflows</h2>
+        <h2 className="text-base font-semibold">Processes</h2>
       </div>
       <Table>
         <TableHeader>
           <TableRow className="border-border bg-muted/30">
-            <TableHead>WfSpec</TableHead>
+            <TableHead>Process</TableHead>
             <TableHead className="text-right whitespace-nowrap">
               Orders Out For Delivery
             </TableHead>
@@ -43,7 +43,9 @@ export function WorkflowTable({
             <TableHead className="text-right whitespace-nowrap">
               Delivered orders
             </TableHead>
-            <TableHead className="text-right">Latency</TableHead>
+            <TableHead className="text-right whitespace-nowrap">
+              Average delivery time
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -51,10 +53,10 @@ export function WorkflowTable({
             <TableCell>
               <Button
                 variant="link"
-                className="h-auto p-0 font-mono text-foreground"
+                className="h-auto p-0 text-foreground"
                 onClick={onSelect}
               >
-                {workflowSpec.name}
+                {workflowSpec.displayName}
               </Button>
             </TableCell>
             <TableCell

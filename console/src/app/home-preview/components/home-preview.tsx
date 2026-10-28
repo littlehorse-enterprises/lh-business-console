@@ -77,7 +77,7 @@ export default function HomePreview() {
     const status =
       orderStatuses[Math.min(index + 1, orderStatuses.length - 1)].value;
     const entries: WorkflowHistoryEntry[] = [
-      { type: "User Task", message: "Executed" },
+      { type: "User Task", message: `Completed by ${run.userId}` },
     ];
     if (status === "PICKED_UP")
       entries.push({
@@ -101,21 +101,23 @@ export default function HomePreview() {
       ),
     );
     setSelectedRun(null);
-    toast.success("User task executed", { description: `WfRun: ${run.id}` });
+    toast.success("User task completed", {
+      description: `Order #${run.orderId}`,
+    });
   }
 
   const statistics = [
     {
       label: "Orders Out For Delivery",
       value: outForDelivery,
-      detail: "order-status: PICKED_UP",
+      detail: "Picked up",
       icon: Truck,
       tone: "info" as const,
     },
     {
       label: "Pending user tasks",
       value: pendingTasks,
-      detail: "user-id: Bob",
+      detail: "For Bob",
       icon: ClipboardList,
       tone: "warning" as const,
     },
@@ -127,7 +129,7 @@ export default function HomePreview() {
       tone: "success" as const,
     },
     {
-      label: "Latency",
+      label: "Average delivery time",
       value: workflowSpec.latency[periodIndex],
       detail: "Ready for pickup → Delivered",
       icon: Clock,
@@ -143,7 +145,7 @@ export default function HomePreview() {
         </h1>
         {view !== "tasks" && (
           <PreviewSelect
-            label="Metrics window"
+            label="Reporting period"
             value={period}
             onChange={setPeriod}
             className="w-48"

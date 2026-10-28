@@ -4,7 +4,6 @@ import {
   Avatar,
   AvatarFallback,
 } from "@littlehorse-enterprises/ui-library/avatar";
-import { Badge } from "@littlehorse-enterprises/ui-library/badge";
 import { Button } from "@littlehorse-enterprises/ui-library/button";
 import {
   Dialog,
@@ -26,8 +25,8 @@ import { useState, type ReactNode } from "react";
 
 export type View = "overview" | "workflows" | "tasks" | "metrics";
 export const viewNames: Record<View, string> = {
-  overview: "Workflow Overview",
-  workflows: "Workflows",
+  overview: "Process Overview",
+  workflows: "Processes",
   tasks: "User Tasks",
   metrics: "Metrics",
 };
@@ -88,17 +87,8 @@ export function PreviewShell({
               </span>
             </span>
           </button>
-          <Badge
-            variant="secondary"
-            className="hidden font-normal lg:inline-flex"
-          >
-            {process.env.NEXT_PUBLIC_API_CLIENT_VERSION}
-          </Badge>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden border-r border-border pr-4 text-sm text-muted-foreground sm:inline">
-            Tenant: <span className="font-medium text-foreground">example</span>
-          </span>
           <ThemeToggle />
           <div className="flex items-center gap-2">
             <div className="hidden text-right md:block">
@@ -181,9 +171,7 @@ export function PreviewShell({
         >
           <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>
-                example <span className="mx-2">/</span> {viewNames[view]}
-              </span>
+              <span>{viewNames[view]}</span>
               <span>Preview · Sample data · Resets on reload</span>
             </div>
             {children}
@@ -210,18 +198,12 @@ export function PreviewShell({
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Workflows, WfRuns, user tasks, public variables, and metrics are
-              sample data. Executing a user task updates this preview and resets
-              on reload.
+              Processes, orders, user tasks, and metrics use sample data.
+              Completing a user task updates this preview and resets on reload.
             </p>
             <p>
-              The WfRun list is a sample of the workflow totals. User Task
-              Forms, permissions, and backend integration are outside this
-              preview.
-            </p>
-            <p>
-              Uses the existing LittleHorse UI library and theme, with the
-              header and sidebar structure used in Saddle.
+              The order list is a sample of the process totals. User Task Forms
+              and permissions are outside this preview.
             </p>
           </div>
         </DialogContent>

@@ -74,25 +74,20 @@ function RunContent({
   const initialStatusIndex = orderStatuses.findIndex(
     (status) => status.value === initialStatus,
   );
-  const publicVariables = [
-    ["order-id", run.orderId],
-    ["user-id", run.userId],
-    ["order-status", run.status],
+  const details = [
+    ["Order ID", run.orderId],
+    ["User", run.userId],
+    ["Status", orderStatuses[currentStatus].label],
   ];
   return (
     <div className="space-y-6">
       <SheetHeader className="pr-7 text-left">
-        <SheetTitle className="text-xl">Workflow Run View</SheetTitle>
-        <SheetDescription>WfSpec: {workflowSpec.name}</SheetDescription>
-        <p className="break-all font-mono text-xs text-muted-foreground">
-          WfRun: {run.id}
-        </p>
+        <SheetTitle className="text-xl">Order #{run.orderId}</SheetTitle>
+        <SheetDescription>{workflowSpec.displayName}</SheetDescription>
       </SheetHeader>
       <WorkflowStatus status={run.status} />
-      <section aria-label="Workflow status">
-        <h3 className="mb-4 text-sm font-semibold">
-          Status: {workflowSpec.statusVariable}
-        </h3>
+      <section aria-label="Order status">
+        <h3 className="mb-4 text-sm font-semibold">Order status</h3>
         <ol>
           {orderStatuses.map((status, index) => {
             const delivered =
@@ -143,7 +138,7 @@ function RunContent({
                       semanticColors[delivered ? "success" : "info"].badge,
                     )}
                   >
-                    order-status
+                    Current
                   </Badge>
                 )}
               </li>
@@ -152,20 +147,18 @@ function RunContent({
         </ol>
       </section>
       <section>
-        <h3 className="mb-3 text-sm font-semibold">Public Variables</h3>
+        <h3 className="mb-3 text-sm font-semibold">Order details</h3>
         <dl className="divide-y divide-border rounded-md border border-border">
-          {publicVariables.map(([name, value]) => (
+          {details.map(([name, value]) => (
             <div
               key={name}
               className="flex justify-between gap-4 px-4 py-3 text-sm"
             >
-              <dt className="shrink-0 font-mono text-muted-foreground">
-                {name}
-              </dt>
+              <dt className="shrink-0 text-muted-foreground">{name}</dt>
               <dd
                 className={cn(
                   "text-right break-words",
-                  name === "user-id" && semanticColors.info.text,
+                  name === "User" && semanticColors.info.text,
                 )}
               >
                 {value}
@@ -187,10 +180,10 @@ function RunContent({
               Pending
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground">user-id: {run.userId}</p>
-          <Button onClick={() => onExecute(run)}>Execute user task</Button>
+          <p className="text-xs text-muted-foreground">For {run.userId}</p>
+          <Button onClick={() => onExecute(run)}>Complete user task</Button>
           <p className="text-xs text-muted-foreground">
-            Sample data. No workflow is changed.
+            Sample data. Changes reset on reload.
           </p>
         </section>
       )}
@@ -216,8 +209,11 @@ function RunContent({
               )}
               <div>
                 <p className="text-sm font-medium">
-                  {entry.type}
-                  {entry.name && `: ${entry.name}`}
+                  {entry.type === "User Task"
+                    ? "User task completed"
+                    : entry.name === "order-delivered"
+                      ? "Order delivered"
+                      : "Order picked up"}
                 </p>
                 <p className="mt-1 text-sm">{entry.message}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Just now</p>
@@ -235,7 +231,7 @@ function RunContent({
               <div>
                 <p className="text-sm">User Task: Pending</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  user-id: {run.userId}
+                  For {run.userId}
                 </p>
               </div>
             </div>
@@ -249,9 +245,7 @@ function RunContent({
                 )}
               />
               <div>
-                <p className="text-sm font-medium">
-                  WorkflowEvent: order-picked-up
-                </p>
+                <p className="text-sm font-medium">Order picked up</p>
                 <p className="mt-1 text-sm">
                   Your order was picked up at 9:42 AM.
                 </p>
@@ -270,9 +264,7 @@ function RunContent({
                 )}
               />
               <div>
-                <p className="text-sm font-medium">
-                  WorkflowEvent: order-delivered
-                </p>
+                <p className="text-sm font-medium">Order delivered</p>
                 <p className="mt-1 text-sm">
                   Your order was delivered at Apartment Building at 10:00 AM.
                 </p>

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import HomePreview from "./components/home-preview";
 
 export const metadata: Metadata = {
-  title: "Workflow Overview | LittleHorse Business Console",
+  title: "Process Overview | LittleHorse Business Console",
   description:
-    "Workflows, user tasks, public variables, WorkflowEvents, and business metrics with sample data.",
+    "Processes, orders, user tasks, and business metrics with sample data.",
   robots: { index: false, follow: false },
 };
 

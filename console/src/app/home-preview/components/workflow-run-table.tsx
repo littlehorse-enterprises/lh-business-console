@@ -56,7 +56,7 @@ export function WorkflowRunTable({
     <Card className="gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
       <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3">
         <h2 className="text-base font-semibold">
-          {userTasks ? "User Tasks" : "Workflow Runs"}
+          {userTasks ? "User Tasks" : "Orders"}
         </h2>
         {onViewAll && (
           <Button variant="outline" size="sm" onClick={onViewAll}>
@@ -71,8 +71,8 @@ export function WorkflowRunTable({
             className="pointer-events-none absolute top-3 left-3 size-4 text-muted-foreground"
           />
           <Input
-            aria-label="Search workflow runs"
-            placeholder="Search by user id or order id"
+            aria-label="Search orders"
+            placeholder="Search by user or order ID"
             value={query}
             onChange={(event) => onQuery(event.target.value)}
             className="pl-9"
@@ -121,7 +121,7 @@ export function WorkflowRunTable({
               value="all"
               className="px-2 text-xs sm:px-3 sm:text-sm"
             >
-              All workflow runs{" "}
+              All orders{" "}
               <span className="ml-2 tabular-nums">{sampleCount}</span>
             </TabsTrigger>
           </TabsList>
@@ -130,10 +130,9 @@ export function WorkflowRunTable({
       <Table>
         <TableHeader>
           <TableRow className="border-border bg-muted/30">
-            <TableHead>WfRun</TableHead>
-            <TableHead>order-id</TableHead>
-            <TableHead>user-id</TableHead>
-            <TableHead>order-status</TableHead>
+            <TableHead>Order ID</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>User Task</TableHead>
             <TableHead>
               <span className="sr-only">View</span>
@@ -146,14 +145,12 @@ export function WorkflowRunTable({
               <TableCell>
                 <Button
                   variant="link"
-                  className="h-auto p-0 font-mono text-xs text-foreground"
-                  title={run.id}
+                  className="h-auto p-0 text-foreground tabular-nums"
                   onClick={() => onOpen(run)}
                 >
-                  {run.id.slice(0, 8)}…{run.id.slice(-4)}
+                  {run.orderId}
                 </Button>
               </TableCell>
-              <TableCell className="font-mono text-sm">{run.orderId}</TableCell>
               <TableCell className={semanticColors.info.text}>
                 {run.userId}
               </TableCell>
@@ -172,7 +169,7 @@ export function WorkflowRunTable({
                     )}
                   >
                     <Clock aria-hidden className="size-3" />
-                    {run.userTask === "pending" ? "Pending" : "Executed"}
+                    {run.userTask === "pending" ? "Pending" : "Completed"}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground">—</span>
@@ -183,7 +180,7 @@ export function WorkflowRunTable({
                   variant="outline"
                   size="sm"
                   onClick={() => onOpen(run)}
-                  aria-label={`View workflow run for order ${run.orderId}`}
+                  aria-label={`View order ${run.orderId}`}
                 >
                   View
                 </Button>
@@ -193,19 +190,19 @@ export function WorkflowRunTable({
           {shownRuns.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={5}
                 className="py-10 text-center text-muted-foreground"
               >
                 {userTasks && !query && statusFilter === "all"
                   ? "No pending user tasks."
-                  : "No workflow runs match the search."}
+                  : "No orders match the search."}
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
       <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-        Showing {shownRuns.length} of {runs.length} sample workflow runs
+        Showing {shownRuns.length} of {runs.length} sample orders
       </div>
     </Card>
   );

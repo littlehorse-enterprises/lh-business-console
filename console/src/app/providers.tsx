@@ -4,12 +4,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
+  const isHomePreview = usePathname() === "/home-preview";
+
   return (
-    <SessionProvider>
+    <SessionProvider
+      session={isHomePreview ? null : undefined}
+      refetchOnWindowFocus={!isHomePreview}
+    >
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"

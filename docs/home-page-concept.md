@@ -4,7 +4,8 @@ Branch: `codex/home-page-brainstorm`.
 
 The October 28 meeting narrowed the next step to moving the existing User Tasks
 Bridge screens into the Business Console sidebar. The authenticated application
-now uses the existing backend, forms, task actions, users, and groups. The earlier
+now uses task and form tables backed by the existing API, with task actions in a
+right-side detail panel. User and group management remain available. The earlier
 order dashboard remains at `/home-preview` as a separate, sample-data concept;
 it is not the application landing page.
 
@@ -28,13 +29,33 @@ recording. Media and the full transcript remain outside this repository.
 | Time        | Decision                                                                      | Implementation                                                                                                    |
 | ----------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | 00:04–00:12 | Use workflow terminology rather than processes.                               | The earlier workflow concept uses the agreed wording. Business-facing navigation avoids metadata type names.      |
-| 00:29–03:10 | Start from the working User Tasks UI and retain its capabilities.             | Reuse the existing task cards, forms, dialogs, API actions, and management components.                            |
+| 00:29–03:10 | Start from the working User Tasks UI and retain its capabilities.             | Use task and form tables while reusing the existing forms, dialogs, API actions, and management components.       |
 | 06:51–08:00 | People who only complete tasks should have a focused entry point.             | Ordinary users land on their tasks, with no admin menu. Existing role checks remain in place.                     |
 | 09:02–10:47 | Group form and task views beneath User Tasks; start with this menu.           | The sidebar contains Tasks and Forms; Users and Groups sit under Administration.                                  |
 | 16:18–17:04 | Treat the first step as a refactor; define workflow visualization separately. | The authenticated landing page contains real tasks. Workflow and analytics views are not added to its navigation. |
-| 18:23–19:09 | Comments must carry over to the new interface.                                | Existing comment create/edit/delete dialogs remain attached to task cards.                                        |
+| 18:23–19:09 | Comments must carry over to the new interface.                                | Existing comment create/edit/delete dialogs remain available in the task detail panel.                            |
 | 19:09–21:25 | Remove large account-count cards; keep counts in their relevant views.        | Forms have a small count; user/group tables and task lists retain inline result counts.                           |
 | 24:23–24:40 | Carry the sidebar and all current features over incrementally.                | Existing routes, profile view switching, filters, pagination, and task actions remain available.                  |
+
+## Table layout
+
+Tasks use the same compact table in the administrator list, My tasks, Available
+tasks, and the tasks for a form. Rows show the form name and a short reference,
+status, assignee, group, and scheduled date. Opening a row shows the selected
+task in a right-side panel with its notes, full copyable references, and the
+existing assignment, completion, claiming, cancellation, comments, and results
+dialogs. The panel follows live task updates and closes when the task leaves the
+current filtered list. Task identity combines the workflow reference and task
+ID, since a task ID alone is not unique across workflows.
+
+Forms use a searchable table with total, available, and assigned-to-me counts.
+The form name and View tasks action open that form's task table. Counts indicate
+an additional page with a plus sign; failed counts display an unavailable value
+rather than zero. Forms remain navigable if a count request fails.
+
+Both tables retain horizontal scrolling on smaller screens instead of reverting
+to cards. Available-task pagination includes every loaded page; its date filters
+are forwarded to the existing API, while group selection stays in its group tabs.
 
 ## Navigation and existing capabilities
 
@@ -69,7 +90,7 @@ expected by the existing adapter; the frontend does not change those permissions
 - Reuse `@littlehorse-enterprises/ui-library`, the approved sidebar styling, and
   the existing functional User Tasks screens. Status colors keep their meaning.
 - Keep technical type names out of navigation and user-facing descriptions.
-  Existing copyable task/workflow references remain available in task cards.
+  Existing copyable task/workflow references remain available in task details.
 - No backend, protobuf, generated API client, authentication policy, or production
   data changes. Local verification uses the separate demo environment.
 - Creating/registering forms and a form builder were discussed at 06:04–06:33

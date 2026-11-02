@@ -5,6 +5,7 @@ import { DateRangePicker } from "@/components/ui/data-range-picker";
 import { ErrorResponse, ErrorType } from "@/lib/error-handling";
 import {
   readTaskFilters,
+  readAvailableTaskFilters,
   updateTaskFilters,
   type TaskFilters,
 } from "@/lib/task-filters";
@@ -42,7 +43,7 @@ import {
 } from "next/navigation";
 import { useMemo, useState } from "react";
 import useSWRInfinite from "swr/infinite";
-import UserTask from "../../components/user-task";
+import TaskTable from "./table";
 import Loading from "../loading";
 // Add a counter for generating unique keys
 const getUniqueId = () => Date.now().toString();
@@ -78,12 +79,13 @@ export default function ListUserTasks({
   const searchParams = useSearchParams();
   const adminView = admin || !!userTaskDefName;
   const requiresStatus = adminView && !userTaskDefName;
-  const query = useMemo(() => {
+  const query = useMemo<TaskFilters>(() => {
+    if (claimable) return readAvailableTaskFilters(searchParams);
     const filters = readTaskFilters(searchParams);
     return requiresStatus
       ? { ...filters, status: filters.status || UserTaskStatus.ASSIGNED }
       : filters;
-  }, [searchParams, requiresStatus]);
+  }, [searchParams, requiresStatus, claimable]);
   function setQuery(next: TaskFilters) {
     const params = updateTaskFilters(new URLSearchParams(searchParams), next);
     router.replace(`${pathname}${params.size ? `?${params}` : ""}`, {
@@ -334,7 +336,7 @@ export default function ListUserTasks({
                     />
                   </div>
 
-                  {!requiresStatus && (
+                  {!requiresStatus && !claimable && (
                     <div>
                       <Label className="text-sm font-medium">Status</Label>
                       <Select
@@ -367,7 +369,7 @@ export default function ListUserTasks({
                     </div>
                   )}
 
-                  {safeUserGroups.length > 0 && (
+                  {safeUserGroups.length > 0 && !claimable && (
                     <div>
                       <Label className="text-sm font-medium">User Group</Label>
                       <Select
@@ -411,74 +413,48 @@ export default function ListUserTasks({
         </div>
       </div>
 
-      {/* Results */}
-      {filteredTasks.length > 0 ? (
-        <div className="space-y-6">
-          {/* Results count */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {filteredTasks.length} of {allTasks.length} loaded tasks
-              {search && ` matching "${search}"`}
-            </p>
-          </div>
-
-          {/* Task Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredTasks.map((userTask) => (
-              <UserTask
-                // userTask.id is only unique within its WfRun — every run of the
-                // same WfSpec produces the same ids — so it must be paired with
-                // wfRunId to key the list.
-                key={`${userTask.wfRunId}/${userTask.id}`}
-                userTask={userTask}
-                admin={adminView}
-                claimable={claimable}
-              />
-            ))}
-          </div>
-
-          {/* Load More */}
-          {hasNextPage && (
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="outline"
-                onClick={fetchNextPage}
-                disabled={isFetchingNextPage}
-                className="min-w-32"
-              >
-                {isFetchingNextPage ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  "Load more tasks"
-                )}
-              </Button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-            <AlertCircle className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            No tasks found
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            {search || hasActiveFilters
-              ? "Try adjusting your search or filters"
-              : "There are no tasks to display"}
-          </p>
-          {hasActiveFilters && (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredTasks.length} of {allTasks.length} loaded tasks
+          {search && ` matching "${search}"`}
+        </p>
+        <TaskTable
+          tasks={filteredTasks}
+          admin={adminView}
+          claimable={claimable}
+          emptyMessage={
+            search || hasActiveFilters
+              ? "No tasks match your search or filters."
+              : "No tasks to display."
+          }
+        />
+        {filteredTasks.length === 0 && hasActiveFilters && (
+          <div className="flex justify-center">
             <Button variant="outline" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-2" />
-              Clear Filters
+              <X className="mr-2 size-4" />
+              Clear filters
             </Button>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+        {hasNextPage && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              onClick={fetchNextPage}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <RefreshCw className="mr-2 size-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Load more tasks"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

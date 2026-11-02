@@ -25,6 +25,14 @@ export function readTaskFilters(
   );
 }
 
+export function readAvailableTaskFilters(params: Pick<URLSearchParams, "get">) {
+  const filters = readTaskFilters(params);
+  return {
+    earliest_start_date: filters.earliest_start_date,
+    latest_start_date: filters.latest_start_date,
+  };
+}
+
 export function updateTaskFilters(
   params: URLSearchParams,
   filters: TaskFilters,

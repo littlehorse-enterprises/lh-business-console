@@ -70,6 +70,6 @@ export const config = {
   // This exact route is a self-contained design demo containing only fixtures.
   // Tenant routes and all authenticated APIs retain their existing auth checks.
   matcher: [
-    "/((?!home-preview/?$|api|_next/static|_next/image|images|favicon.ico).*)",
+    "/((?!home-preview/?$|api|login(?:/|$)|_next/static|_next/image|images|favicon.ico).*)",
   ],
 };

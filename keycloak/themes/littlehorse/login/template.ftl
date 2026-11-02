@@ -87,7 +87,19 @@
 <main class="page">
     <#include "story.ftl">
     <section class="signIn" aria-label="${msg('loginAccountTitle')}">
-        <div class="signInHeader"><button type="button" class="themeToggle" data-theme-toggle aria-label="${msg('lhToggleTheme')}">◐</button></div>
+        <div class="signInHeader">
+          <div class="themeControl">
+            <button type="button" class="themeToggle" id="theme-toggle" data-theme-toggle aria-label="${msg('lhToggleTheme')}" aria-haspopup="menu" aria-controls="theme-menu" aria-expanded="false">
+              <svg class="themeSun" width="19.2" height="19.2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+              <svg class="themeMoon" width="19.2" height="19.2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.464.402.807a6.25 6.25 0 0 0 8.268 8.268c.344-.215.83-.004.803.397"/></svg>
+            </button>
+            <div id="theme-menu" class="themeMenu" data-theme-menu role="menu" aria-labelledby="theme-toggle" hidden>
+              <button type="button" role="menuitem" tabindex="-1" data-theme-option="light">Light</button>
+              <button type="button" role="menuitem" tabindex="-1" data-theme-option="dark">Dark</button>
+              <button type="button" role="menuitem" tabindex="-1" data-theme-option="system">System</button>
+            </div>
+          </div>
+        </div>
         <div class="signInBody">
             <div class="welcomeMark"><img class="themeHorse" src="${url.resourcesPath}/img/logo.svg" alt="" width="36" height="31"></div>
             <p class="signInEyebrow">LITTLEHORSE BUSINESS CONSOLE</p>

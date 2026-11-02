@@ -28,3 +28,17 @@ The CSS and story markup mirror `console/src/app/login`. The logo, Geist font,
 and palette come from the existing console assets and UI library. Keep both
 screens aligned when changing the design. The theme supports light and dark
 appearance, keyboard controls, and reduced motion.
+
+Both screens offer the same Light, Dark, and System menu. The console sends the
+chosen mode into the authorization request. After authentication, an invisible
+top-level handoff through the theme's static resource returns any changed mode
+to the console before opening the requested page. It carries only the appearance
+preference; the normal authorization-code flow and credential form are unchanged.
+This avoids relying on cookies or storage shared between different hostnames.
+
+`LHUT_KEYCLOAK_THEME_SYNC=true` enables the return handoff. Compose and standalone
+enable it because they install this theme. For an external Keycloak deployment,
+enable it only after deploying the `littlehorse` theme and its static resources;
+otherwise leave it unset. An existing SSO session that skips the credential page
+keeps the console's current preference. The completion route accepts only local
+destinations, and the theme verifies the console origin before returning.

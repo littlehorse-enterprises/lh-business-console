@@ -86,4 +86,5 @@ services:
       - AUTH_URL=http://localhost:3000
       - NEXTAUTH_URL=http://localhost:3000
       - LHUT_API_URL=http://backend:8089
+      - LHUT_KEYCLOAK_THEME_SYNC=true
       - LHUT_AUTHORITIES=$.realm_access.roles,$.resource_access.*.roles

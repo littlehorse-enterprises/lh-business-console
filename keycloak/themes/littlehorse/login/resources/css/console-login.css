@@ -794,3 +794,59 @@ html.login-pf,
 .page .pf-c-button.pf-m-primary::after {
   border: 0;
 }
+
+.themeControl {
+  position: relative;
+}
+.themeToggle {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.themeToggle:hover {
+  background: var(--accent);
+}
+.themeMoon {
+  display: none;
+}
+.dark .themeSun {
+  display: none;
+}
+.dark .themeMoon {
+  display: block;
+}
+.themeMenu {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  min-width: 128px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+.themeMenu[hidden] {
+  display: none;
+}
+.themeMenu button {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: start;
+  cursor: pointer;
+}
+.page .themeMenu button:focus-visible,
+.themeMenu button:hover {
+  background: var(--accent);
+  outline: none;
+}

@@ -17,6 +17,7 @@ import SignInButton from "./sign-in-button";
 import ProcessMatrix from "./process-matrix";
 import HeroSkeleton from "./hero-skeleton";
 import styles from "./login.module.css";
+import { loginThemeOptions } from "@/lib/login-theme";
 
 const geist = localFont({ src: "../../../public/fonts/GeistVF.woff" });
 
@@ -41,10 +42,14 @@ export default async function LoginPage({
     process.env.LH_LOGIN_PREVIEW_MOTION === "true" &&
     ["localhost:3000", "127.0.0.1:3000", "[::1]:3000"].includes(host ?? "");
 
-  async function handleSignIn() {
+  async function handleSignIn(formData: FormData) {
     "use server";
     try {
-      await signIn("keycloak", { redirectTo: callbackUrl });
+      const { redirectTo, authorization } = loginThemeOptions(
+        callbackUrl,
+        formData.get("theme"),
+      );
+      await signIn("keycloak", { redirectTo }, authorization);
     } catch (error) {
       if (error instanceof AuthError) {
         redirect(

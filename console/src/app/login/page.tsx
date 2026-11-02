@@ -106,7 +106,7 @@ export default async function LoginPage({
                   <ClipboardList size={17} />
                 </span>
                 <span className={styles.previewTitles}>
-                  <span className={styles.previewTitle}>UserTaskDef</span>
+                  <span className={styles.previewTitle}>User tasks</span>
                   <HeroSkeleton className={styles.previewSubtitleLine} />
                 </span>
               </div>

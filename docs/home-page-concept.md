@@ -125,6 +125,10 @@ Open <http://localhost:3101/default> for the user view or
 is required. The repository's demo administrator is `my-admin-user` / `1234`.
 The earlier sample-only concept remains at `/home-preview`.
 
+The client-scoped Keycloak theme also matches the custom login page during the
+username/password step. See [Keycloak setup](../keycloak/README.md) for local
+and separately managed identity providers.
+
 ## Validation
 
 ```sh

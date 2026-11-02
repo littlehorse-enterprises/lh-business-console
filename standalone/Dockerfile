@@ -22,6 +22,7 @@ RUN wget -q https://github.com/keycloak/keycloak/releases/download/${KEYCLOAK_VE
     && rm /tmp/keycloak.tar.gz
 
 WORKDIR /lh
+COPY ./keycloak/themes/littlehorse /keycloak/themes/littlehorse
 COPY ./standalone/keycloak-entrypoint.sh /lh
 COPY ./standalone/docker-entrypoint.sh /lh
 COPY ./standalone/backend-entrypoint.sh /lh

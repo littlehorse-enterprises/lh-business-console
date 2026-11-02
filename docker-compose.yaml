@@ -4,6 +4,8 @@ services:
       - "8888:8888"
       - "9000:9000"
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
+    volumes:
+      - ./keycloak/themes/littlehorse:/opt/keycloak/themes/littlehorse:ro
     healthcheck:
       test: "timeout 5s bash -c ':> /dev/tcp/localhost/8888'"
       timeout: 5s

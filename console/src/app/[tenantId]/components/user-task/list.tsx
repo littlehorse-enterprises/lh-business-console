@@ -34,7 +34,7 @@ import {
   UserTaskRunListDTO,
   UserTaskStatus,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
-import { AlertCircle, FilterIcon, RefreshCw, Search, X } from "lucide-react";
+import { AlertCircle, FilterIcon, RefreshCw, X } from "lucide-react";
 import {
   useParams,
   usePathname,
@@ -251,23 +251,27 @@ export default function ListUserTasks({
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full sm:w-64">
           <Input
             aria-label="Search tasks"
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-10"
+            className="pr-10"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSearch("");
+            }}
           />
           {search && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSearch("")}
               aria-label="Clear search"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
 

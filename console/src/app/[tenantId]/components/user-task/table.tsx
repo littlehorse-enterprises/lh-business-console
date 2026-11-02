@@ -16,7 +16,13 @@ import {
   TableHeader,
   TableRow,
 } from "@littlehorse-enterprises/ui-library/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@littlehorse-enterprises/ui-library/tooltip";
 import type { SimpleUserTaskRunDTO } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
+import { Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import UserTask from "./index";
 import { TaskStatus } from "./status";
@@ -43,18 +49,16 @@ export default function TaskTable({
 
   return (
     <>
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div>
         <Table aria-label="Tasks">
           <TableHeader>
-            <TableRow className="border-border bg-muted/30">
-              <TableHead className="pl-4">Task</TableHead>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead>Task</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Assigned to</TableHead>
               <TableHead>Group</TableHead>
               <TableHead>Scheduled</TableHead>
-              <TableHead className="pr-4">
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -71,12 +75,15 @@ export default function TaskTable({
                     task.user.id
                 : "Unassigned";
               return (
-                <TableRow key={taskKey(task)} className="border-border">
-                  <TableCell className="pl-4 py-3">
+                <TableRow
+                  key={taskKey(task)}
+                  className="border-border last:border-b-0 hover:bg-transparent"
+                >
+                  <TableCell>
                     <button
                       type="button"
                       onClick={() => setSelectedKey(taskKey(task))}
-                      className="block max-w-64 rounded text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                      className="block max-w-64 rounded text-left hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                       aria-label={`Open ${task.userTaskDefName} task ${reference}`}
                     >
                       <span className="block truncate">
@@ -126,15 +133,23 @@ export default function TaskTable({
                       )}
                     </time>
                   </TableCell>
-                  <TableCell className="pr-4 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedKey(taskKey(task))}
-                      aria-label={`View task ${reference}`}
-                    >
-                      View
-                    </Button>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setSelectedKey(taskKey(task))}
+                            aria-label={`View task ${reference}`}
+                          >
+                            <Eye aria-hidden className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View task details</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

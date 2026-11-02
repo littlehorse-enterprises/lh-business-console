@@ -18,11 +18,16 @@ import {
   TableRow,
 } from "@littlehorse-enterprises/ui-library/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@littlehorse-enterprises/ui-library/tooltip";
+import {
   UserTaskStatus,
   type UserTaskRunListDTO,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, RefreshCw, Search, X } from "lucide-react";
+import { AlertCircle, ListTodo, RefreshCw, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useState } from "react";
@@ -128,27 +133,27 @@ export default function UserTaskDefs({
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-lg">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground"
-        />
+      <div className="relative w-full sm:w-64">
         <Input
           aria-label="Search forms"
           placeholder="Search forms..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="pl-9 pr-10"
+          className="pr-10"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setSearch("");
+          }}
         />
         {search && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             aria-label="Clear form search"
             onClick={() => setSearch("")}
-            className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+            className="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         )}
       </div>
       {countError && (
@@ -170,11 +175,14 @@ export default function UserTaskDefs({
           </Button>
         </Alert>
       )}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <p className="text-sm text-muted-foreground">
+        Showing {matchingForms.length} of {userTaskDefs.length} loaded forms
+      </p>
+      <div>
         <Table aria-label="Forms">
           <TableHeader>
-            <TableRow className="border-border bg-muted/30">
-              <TableHead className="pl-4">Form</TableHead>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="w-2/5">Form</TableHead>
               <TableHead className="text-right whitespace-nowrap">
                 Total tasks
               </TableHead>
@@ -182,9 +190,7 @@ export default function UserTaskDefs({
               <TableHead className="text-right whitespace-nowrap">
                 Assigned to me
               </TableHead>
-              <TableHead className="pr-4">
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -192,27 +198,45 @@ export default function UserTaskDefs({
               const form = counts?.find((item) => item.name === name);
               const href = `/${tenantId}/admin/${encodeURIComponent(name)}`;
               return (
-                <TableRow key={name} className="border-border">
-                  <TableCell className="pl-4 py-4">
-                    <Link href={href} className="font-medium hover:underline">
+                <TableRow
+                  key={name}
+                  className="border-border last:border-b-0 hover:bg-transparent"
+                >
+                  <TableCell>
+                    <Link href={href} className="hover:underline">
                       {name}
                     </Link>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     <Count count={form?.total} loading={loadingCounts} />
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-blue-700 dark:text-blue-300">
+                  <TableCell className="text-right tabular-nums text-info-fg">
                     <Count count={form?.available} loading={loadingCounts} />
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-amber-900 dark:text-amber-200">
+                  <TableCell className="text-right tabular-nums text-warning-strong">
                     <Count count={form?.assignedToMe} loading={loadingCounts} />
                   </TableCell>
-                  <TableCell className="pr-4 text-right">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={href} aria-label={`View tasks for ${name}`}>
-                        View tasks
-                      </Link>
-                    </Button>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            asChild
+                          >
+                            <Link
+                              href={href}
+                              aria-label={`View tasks for ${name}`}
+                            >
+                              <ListTodo aria-hidden className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View tasks</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -231,9 +255,6 @@ export default function UserTaskDefs({
             )}
           </TableBody>
         </Table>
-        <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-          Showing {matchingForms.length} of {userTaskDefs.length} loaded forms
-        </p>
       </div>
     </div>
   );

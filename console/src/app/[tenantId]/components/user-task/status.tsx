@@ -6,25 +6,22 @@ export function TaskStatus({ status }: { status: string }) {
     ASSIGNED: {
       label: "In progress",
       icon: Clock,
-      className:
-        "border-warning/30 bg-warning/10 text-amber-900 dark:text-amber-200",
+      className: "border-warning/30 bg-warning/10 text-warning-strong",
     },
     UNASSIGNED: {
       label: "Available",
       icon: AlertCircle,
-      className:
-        "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200",
+      className: "border-info-fg/30 bg-tint-blue-bg text-info-fg",
     },
     DONE: {
       label: "Completed",
       icon: CheckCircle2,
-      className:
-        "border-success/30 bg-success/10 text-green-800 dark:text-green-200",
+      className: "border-success/30 bg-success/10 text-success-strong",
     },
     CANCELLED: {
       label: "Cancelled",
       icon: XCircle,
-      className: "border-destructive/30 bg-destructive/10 text-destructive",
+      className: "border-border bg-muted text-muted-strong",
     },
   };
   const style = styles[status as keyof typeof styles];

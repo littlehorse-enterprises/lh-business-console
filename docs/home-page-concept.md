@@ -57,6 +57,15 @@ Both tables retain horizontal scrolling on smaller screens instead of reverting
 to cards. Available-task pagination includes every loaded page; its date filters
 are forwarded to the existing API, while group selection stays in its group tabs.
 
+Table styling follows Saddle's Tasks and Workflows lists: the shared UI-library
+table sits directly on the page, with unfilled headers, standard cell padding,
+subtle row separators, and left-aligned 32px ghost icon actions with tooltips.
+Search inputs use Saddle's compact width and clear control. Status badges use
+Saddle's semantic soft fills and contrast-adjusted text colors; cancelled tasks
+are neutral. The utility build also follows Saddle's single-preflight setup.
+Reference: `lh-saddle/ui/src/components/tasks/TaskTable.tsx`, `TaskRow.tsx`,
+`TaskActions.tsx`, and `ui/src/app/theme-override.css` on Saddle's main branch.
+
 ## Navigation and existing capabilities
 
 | View                | URL beneath `/<tenant>`         | Existing behavior retained                                                                                                     |

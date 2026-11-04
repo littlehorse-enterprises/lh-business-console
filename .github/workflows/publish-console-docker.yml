@@ -65,7 +65,7 @@ jobs:
       - name: Publish Image
         uses: littlehorse-enterprises/publish-image@v1
         with:
-          image-name: lh-user-tasks-bridge-console
+          image-name: lh-business-console
           dockerfile: ./console/Dockerfile
           build-args: |
             LH_VERSION=${{ env.LH_VERSION }}

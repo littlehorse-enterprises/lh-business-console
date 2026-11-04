@@ -153,7 +153,7 @@ jobs:
         id: publish-image
         uses: littlehorse-enterprises/publish-image@v1
         with:
-          image-name: lh-user-tasks-bridge-backend
+          image-name: lh-business-console-backend
           dockerfile: Dockerfile
           build-args: |
             LH_VERSION=${{ env.LH_VERSION }}
@@ -167,7 +167,7 @@ jobs:
         id: publish-standalone-image
         uses: littlehorse-enterprises/publish-image@v1
         with:
-          image-name: lh-user-tasks-bridge-standalone
+          image-name: lh-business-console-standalone
           dockerfile: standalone/Dockerfile
           build-args: |
             LH_VERSION=${{ env.LH_VERSION }}

@@ -19,7 +19,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: "21"
+          java-version: "25"
           distribution: "corretto"
 
       - name: Test and Build Artifact
@@ -40,7 +40,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: "21"
+          java-version: "25"
           distribution: "corretto"
 
       - name: Setup pnpm
@@ -141,7 +141,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: "21"
+          java-version: "25"
           distribution: "corretto"
 
       - name: Read LittleHorse Version

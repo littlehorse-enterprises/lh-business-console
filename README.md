@@ -15,7 +15,7 @@ This repository contains:
 
 ## Run locally
 
-Install Java 21, Node.js 20.9 or later, pnpm 10.19.0, and Docker with Compose.
+Install Java 25, Node.js 20.9 or later, pnpm 10.19.0, and Docker with Compose.
 Add `127.0.0.1 keycloak littlehorse` to `/etc/hosts`, then run:
 
 ```sh

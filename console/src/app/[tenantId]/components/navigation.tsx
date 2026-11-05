@@ -26,7 +26,7 @@ export default function Navigation() {
         })
     : "tasks";
   const links = [
-    { id: "tasks", label: "Tasks", icon: ClipboardList },
+    { id: "tasks", label: "User Tasks", icon: ClipboardList },
     ...(admin ? [{ id: "forms", label: "Forms", icon: FileText }] : []),
     ...(admin
       ? [

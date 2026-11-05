@@ -5,8 +5,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LittleHorse SSO Workflow Bridge",
-  description: "LittleHorse SSO Workflow Bridge",
+  title: "LittleHorse Business Console",
+  description: "User tasks, forms, users, and groups.",
 };
 
 const inter = Inter({

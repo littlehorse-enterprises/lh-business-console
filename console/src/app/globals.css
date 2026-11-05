@@ -1,5 +1,54 @@
 @import "@littlehorse-enterprises/ui-library/index.css";
-@import "tailwindcss";
+/* Match Saddle's utility build without applying a second preflight. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../../node_modules/@littlehorse-enterprises/ui-library/dist";
+
+/* Saddle's semantic text colors retain contrast over the soft status fills. */
+:root {
+  --success-strong: oklch(45% 0.13 145);
+  --warning-strong: oklch(47% 0.12 80);
+  --muted-strong: oklch(45% 0.0117 58.07);
+  --info-fg: oklch(46% 0.13 258);
+}
+
+.dark {
+  --success-strong: oklch(84% 0.15 145);
+  --warning-strong: oklch(85% 0.15 80);
+  --muted-strong: oklch(78% 0.009 56.26);
+  --info-fg: oklch(78% 0.1 258);
+}
+
+@theme inline {
+  --default-font-family: var(--font-inter);
+  --default-mono-font-family: "JetBrains Mono", monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-success-strong: var(--success-strong);
+  --color-warning-strong: var(--warning-strong);
+  --color-muted-strong: var(--muted-strong);
+  --color-info-fg: var(--info-fg);
+  --color-tint-blue-bg: var(--tint-blue-bg);
+}
 
 /*
  * ui-library 1.1.0 flipped --primary-foreground from black to near-white while

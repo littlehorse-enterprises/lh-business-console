@@ -517,7 +517,7 @@ export default function UsersManagement({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Users</h2>
+        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
         <div className="flex space-x-2">
           <Dialog
             open={isCreateDialogOpen}

@@ -4,6 +4,12 @@ import { getUserTasks } from "@/app/[tenantId]/actions/user";
 import { DateRangePicker } from "@/components/ui/data-range-picker";
 import { ErrorResponse, ErrorType } from "@/lib/error-handling";
 import {
+  readTaskFilters,
+  readAvailableTaskFilters,
+  updateTaskFilters,
+  type TaskFilters,
+} from "@/lib/task-filters";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -28,21 +34,19 @@ import {
   UserTaskRunListDTO,
   UserTaskStatus,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
-import { AlertCircle, FilterIcon, RefreshCw, Search, X } from "lucide-react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { AlertCircle, FilterIcon, RefreshCw, X } from "lucide-react";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import { useMemo, useState } from "react";
 import useSWRInfinite from "swr/infinite";
-import UserTask from "../../components/user-task";
+import TaskTable from "./table";
 import Loading from "../loading";
 // Add a counter for generating unique keys
 const getUniqueId = () => Date.now().toString();
-
-type Query = {
-  user_group_id?: UserGroupDTO["id"];
-  status?: UserTaskStatus;
-  earliest_start_date?: string;
-  latest_start_date?: string;
-};
 
 export default function ListUserTasks({
   userGroups,
@@ -50,14 +54,17 @@ export default function ListUserTasks({
   initialData,
   claimable,
   initialError,
+  admin = false,
+  showHeading = true,
 }: {
   userGroups: UserGroupDTO[];
   userTaskDefName?: string;
   initialData: UserTaskRunListDTO;
   claimable?: boolean;
   initialError?: ErrorResponse;
+  admin?: boolean;
+  showHeading?: boolean;
 }) {
-  const [query, setQuery] = useState<Query>({});
   const [search, setSearch] = useState("");
   const [limit] = useState(100);
   const [error, setError] = useState<ErrorResponse | undefined>(initialError);
@@ -68,24 +75,23 @@ export default function ListUserTasks({
   const safeUserGroups = Array.isArray(userGroups) ? userGroups : [];
 
   const router = useRouter();
-
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  useEffect(() => {
-    const query = Object.fromEntries(
-      new URLSearchParams(searchParams).entries(),
-    ) as Query;
-    setQuery(query);
-  }, [searchParams]);
-
-  useLayoutEffect(() => {
-    const searchParams = new URLSearchParams();
-    Object.entries(query)
-      .filter(([, value]) => value !== undefined)
-      .forEach(([key, value]) => searchParams.set(key, value.toString()));
-    router.replace(
-      `${window.location.pathname.split("?")[0]}?${searchParams.toString()}`,
-    );
-  }, [query, router]);
+  const adminView = admin || !!userTaskDefName;
+  const requiresStatus = adminView && !userTaskDefName;
+  const query = useMemo<TaskFilters>(() => {
+    if (claimable) return readAvailableTaskFilters(searchParams);
+    const filters = readTaskFilters(searchParams);
+    return requiresStatus
+      ? { ...filters, status: filters.status || UserTaskStatus.ASSIGNED }
+      : filters;
+  }, [searchParams, requiresStatus, claimable]);
+  function setQuery(next: TaskFilters) {
+    const params = updateTaskFilters(new URLSearchParams(searchParams), next);
+    router.replace(`${pathname}${params.size ? `?${params}` : ""}`, {
+      scroll: false,
+    });
+  }
 
   const getKey = (
     pageIndex: number,
@@ -104,11 +110,11 @@ export default function ListUserTasks({
         setError(undefined);
 
         const [, , query, limit, bookmark] = key;
-        const response = await (userTaskDefName
+        const response = await (adminView
           ? adminGetAllTasks(tenantId, {
               ...query,
               limit,
-              type: userTaskDefName,
+              type: userTaskDefName || "",
               bookmark,
             })
           : getUserTasks(tenantId, {
@@ -151,7 +157,10 @@ export default function ListUserTasks({
     setSearch("");
   };
 
-  const hasActiveFilters = Object.keys(query).length > 0 || search.length > 0;
+  const filterCount = Object.entries(query).filter(
+    ([key, value]) => value && (!requiresStatus || key !== "status"),
+  ).length;
+  const hasActiveFilters = filterCount > 0 || search.length > 0;
 
   const isPending = !data;
   if (isPending) return <Loading />;
@@ -163,13 +172,13 @@ export default function ListUserTasks({
   if (error) {
     return (
       <div className="space-y-6">
-        {!userTaskDefName && !claimable && (
+        {showHeading && !userTaskDefName && !claimable && (
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight text-foreground">
-              My Assigned UserTasks
+              My tasks
             </h2>
             <p className="text-muted-foreground">
-              UserTasks currently assigned to you
+              Tasks currently assigned to you
             </p>
           </div>
         )}
@@ -183,7 +192,7 @@ export default function ListUserTasks({
                 ? "Permission Denied"
                 : error.type === ErrorType.NETWORK
                   ? "Network Error"
-                  : "Error Loading UserTasks"}
+                  : "Error loading tasks"}
           </AlertTitle>
           <AlertDescription className="mt-2">{error.message}</AlertDescription>
           <Button
@@ -219,10 +228,10 @@ export default function ListUserTasks({
   return (
     <div className="space-y-6">
       {/* Header */}
-      {!userTaskDefName && !claimable && (
+      {showHeading && !userTaskDefName && !claimable && (
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            My Assigned UserTasks
+            My tasks
           </h2>
           <p className="text-muted-foreground">
             Tasks currently assigned to you
@@ -230,40 +239,62 @@ export default function ListUserTasks({
         </div>
       )}
 
-      {userTaskDefName && (
+      {showHeading && userTaskDefName && (
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
             {userTaskDefName}
           </h2>
-          <p className="text-muted-foreground">
-            All UserTasks for this UserTaskDef
-          </p>
+          <p className="text-muted-foreground">Tasks for this form</p>
         </div>
       )}
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full sm:w-64">
           <Input
-            placeholder="Search UserTasks..."
+            aria-label="Search tasks"
+            placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-10"
+            className="pr-10"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSearch("");
+            }}
           />
           {search && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+              className="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
 
         {/* Filters */}
         <div className="flex gap-2">
+          {requiresStatus && (
+            <Select
+              value={query.status}
+              onValueChange={(value) =>
+                setQuery({ ...query, status: value as UserTaskStatus })
+              }
+            >
+              <SelectTrigger aria-label="Task status" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ASSIGNED">In progress</SelectItem>
+                <SelectItem value="UNASSIGNED">Available</SelectItem>
+                <SelectItem value="DONE">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -272,9 +303,9 @@ export default function ListUserTasks({
               >
                 <FilterIcon className="h-4 w-4 mr-2" />
                 Filters
-                {hasActiveFilters && (
+                {filterCount > 0 && (
                   <span className="ml-2 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                    {Object.keys(query).length}
+                    {filterCount}
                   </span>
                 )}
               </Button>
@@ -282,10 +313,7 @@ export default function ListUserTasks({
             <PopoverContent className="w-80" align="end">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Filter UserTasks</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Narrow down your UserTask list
-                  </p>
+                  <h4 className="font-medium text-sm">Filter tasks</h4>
                 </div>
 
                 <div className="space-y-4">
@@ -312,36 +340,40 @@ export default function ListUserTasks({
                     />
                   </div>
 
-                  <div>
-                    <Label className="text-sm font-medium">Status</Label>
-                    <Select
-                      value={query.status ?? "ALL"}
-                      onValueChange={(value) => {
-                        setQuery({
-                          ...query,
-                          status:
-                            value === "ALL"
-                              ? undefined
-                              : (value as UserTaskStatus),
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Statuses</SelectItem>
-                        {userTaskDefName && (
-                          <SelectItem value="UNASSIGNED">Available</SelectItem>
-                        )}
-                        <SelectItem value="ASSIGNED">In Progress</SelectItem>
-                        <SelectItem value="DONE">Completed</SelectItem>
-                        <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {!requiresStatus && !claimable && (
+                    <div>
+                      <Label className="text-sm font-medium">Status</Label>
+                      <Select
+                        value={query.status ?? "ALL"}
+                        onValueChange={(value) => {
+                          setQuery({
+                            ...query,
+                            status:
+                              value === "ALL"
+                                ? undefined
+                                : (value as UserTaskStatus),
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">All Statuses</SelectItem>
+                          {adminView && (
+                            <SelectItem value="UNASSIGNED">
+                              Available
+                            </SelectItem>
+                          )}
+                          <SelectItem value="ASSIGNED">In Progress</SelectItem>
+                          <SelectItem value="DONE">Completed</SelectItem>
+                          <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
-                  {safeUserGroups.length > 0 && (
+                  {safeUserGroups.length > 0 && !claimable && (
                     <div>
                       <Label className="text-sm font-medium">User Group</Label>
                       <Select
@@ -385,74 +417,48 @@ export default function ListUserTasks({
         </div>
       </div>
 
-      {/* Results */}
-      {filteredTasks.length > 0 ? (
-        <div className="space-y-6">
-          {/* Results count */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {filteredTasks.length} of {allTasks.length} UserTasks
-              {search && ` matching "${search}"`}
-            </p>
-          </div>
-
-          {/* Task Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredTasks.map((userTask) => (
-              <UserTask
-                // userTask.id is only unique within its WfRun — every run of the
-                // same WfSpec produces the same ids — so it must be paired with
-                // wfRunId to key the list.
-                key={`${userTask.wfRunId}/${userTask.id}`}
-                userTask={userTask}
-                admin={!!userTaskDefName}
-                claimable={claimable}
-              />
-            ))}
-          </div>
-
-          {/* Load More */}
-          {hasNextPage && (
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="outline"
-                onClick={fetchNextPage}
-                disabled={isFetchingNextPage}
-                className="min-w-32"
-              >
-                {isFetchingNextPage ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  "Load More UserTasks"
-                )}
-              </Button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-            <AlertCircle className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            No UserTasks found
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            {search || hasActiveFilters
-              ? "Try adjusting your search or filters"
-              : "There are no UserTasks to display"}
-          </p>
-          {hasActiveFilters && (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredTasks.length} of {allTasks.length} loaded tasks
+          {search && ` matching "${search}"`}
+        </p>
+        <TaskTable
+          tasks={filteredTasks}
+          admin={adminView}
+          claimable={claimable}
+          emptyMessage={
+            search || hasActiveFilters
+              ? "No tasks match your search or filters."
+              : "No tasks to display."
+          }
+        />
+        {filteredTasks.length === 0 && hasActiveFilters && (
+          <div className="flex justify-center">
             <Button variant="outline" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-2" />
-              Clear Filters
+              <X className="mr-2 size-4" />
+              Clear filters
             </Button>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+        {hasNextPage && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              onClick={fetchNextPage}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <RefreshCw className="mr-2 size-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Load more tasks"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

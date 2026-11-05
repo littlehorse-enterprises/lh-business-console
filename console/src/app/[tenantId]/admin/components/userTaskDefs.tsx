@@ -7,315 +7,254 @@ import {
   AlertTitle,
 } from "@littlehorse-enterprises/ui-library/alert";
 import { Button } from "@littlehorse-enterprises/ui-library/button";
-import { UserTaskStatus } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
+import { Input } from "@littlehorse-enterprises/ui-library/input";
+import { Skeleton } from "@littlehorse-enterprises/ui-library/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@littlehorse-enterprises/ui-library/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@littlehorse-enterprises/ui-library/tooltip";
+import {
+  UserTaskStatus,
+  type UserTaskRunListDTO,
+} from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ClipboardList, RefreshCw } from "lucide-react";
+import { AlertCircle, ListTodo, RefreshCw, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useState } from "react";
 
-interface UserTaskDefCount {
+type TaskCount = { value: number; more: boolean };
+type FormCounts = {
   name: string;
-  totalCount: number;
-  unassignedCount: number;
-  assignedToMeCount: number;
+  total?: TaskCount;
+  available?: TaskCount;
+  assignedToMe?: TaskCount;
+};
+
+function countTasks(data?: UserTaskRunListDTO): TaskCount | undefined {
+  return data
+    ? { value: data.userTasks.length, more: !!data.bookmark }
+    : undefined;
 }
 
-interface UserTaskDefsProps {
-  tenantId: string;
-  userTaskDefs: string[];
-  hasError: boolean;
+function Count({ count, loading }: { count?: TaskCount; loading: boolean }) {
+  if (loading)
+    return <Skeleton aria-label="Loading count" className="ml-auto h-4 w-8" />;
+  return count ? (
+    <>
+      {count.value}
+      {count.more ? "+" : ""}
+    </>
+  ) : (
+    <span title="Count unavailable">—</span>
+  );
 }
 
 export default function UserTaskDefs({
   tenantId,
   userTaskDefs,
   hasError,
-}: UserTaskDefsProps) {
+}: {
+  tenantId: string;
+  userTaskDefs: string[];
+  hasError: boolean;
+}) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
-
-  // Fetch task counts for each definition
+  const [search, setSearch] = useState("");
   const {
-    data: taskCounts,
-    error: taskCountsError,
-    refetch: refreshTaskCounts,
-    isLoading: isTaskCountsLoading,
-  } = useQuery<UserTaskDefCount[]>({
-    queryKey: ["taskCounts", tenantId, userTaskDefs, userId],
+    data: counts,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery<FormCounts[]>({
+    queryKey: ["form-table-counts", tenantId, userTaskDefs, userId],
     queryFn: async () => {
-      if (!userTaskDefs || userTaskDefs.length === 0) {
-        return [];
-      }
-
-      const countPromises = userTaskDefs.map(async (name: string) => {
-        // Get unassigned tasks count
-        const unassignedResult = await adminGetAllTasks(tenantId, {
-          type: name,
-          status: UserTaskStatus.UNASSIGNED,
-          limit: 100,
-        });
-
-        // Get tasks assigned to current user
-        const assignedToMeResult = userId
-          ? await adminGetAllTasks(tenantId, {
+      if (!userId) return [];
+      return Promise.all(
+        userTaskDefs.map(async (name) => {
+          const [total, available, assignedToMe] = await Promise.all([
+            adminGetAllTasks(tenantId, { type: name, limit: 100 }),
+            adminGetAllTasks(tenantId, {
+              type: name,
+              status: UserTaskStatus.UNASSIGNED,
+              limit: 100,
+            }),
+            adminGetAllTasks(tenantId, {
               type: name,
               status: UserTaskStatus.ASSIGNED,
               user_id: userId,
               limit: 100,
-            })
-          : { data: { userTasks: [] } };
-
-        const totalCountResult = await adminGetAllTasks(tenantId, {
-          type: name,
-          limit: 100,
-        });
-
-        // Handle error responses
-        const totalCount = totalCountResult.data?.userTasks?.length || 0;
-        const unassignedCount = unassignedResult.data?.userTasks?.length || 0;
-        const assignedToMeCount =
-          assignedToMeResult.data?.userTasks?.length || 0;
-
-        return {
-          name,
-          totalCount,
-          unassignedCount,
-          assignedToMeCount,
-        };
-      });
-
-      return Promise.all(countPromises);
+            }),
+          ]);
+          return {
+            name,
+            total: countTasks(total.data),
+            available: countTasks(available.data),
+            assignedToMe: countTasks(assignedToMe.data),
+          };
+        }),
+      );
     },
-    enabled: userTaskDefs.length > 0 && !hasError,
+    enabled: userTaskDefs.length > 0 && !hasError && !!userId,
     refetchInterval: 5000,
     refetchOnWindowFocus: true,
   });
 
-  // Handle errors
-  if (hasError) {
+  if (hasError)
     return (
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error loading UserTaskDefs</AlertTitle>
+        <AlertCircle className="size-4" />
+        <AlertTitle>Error loading forms</AlertTitle>
         <AlertDescription>
-          Failed to load UserTaskDefs. Please check your permissions and try
-          again.
+          Could not load forms. Please try again.
         </AlertDescription>
       </Alert>
     );
-  }
 
-  if (taskCountsError) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error loading task counts</AlertTitle>
-        <AlertDescription>
-          {(taskCountsError as Error).message}
-        </AlertDescription>
-        <Button
-          onClick={() => refreshTaskCounts()}
-          variant="outline"
-          size="sm"
-          className="mt-2"
-        >
-          <RefreshCw className="mr-2 h-4 w-4" /> Retry
-        </Button>
-      </Alert>
+  const matchingForms = userTaskDefs.filter((name) =>
+    name.toLowerCase().includes(search.toLowerCase().trim()),
+  );
+  const loadingCounts = !counts && !error;
+  const countError =
+    !!error ||
+    counts?.some(
+      (form) => !form.total || !form.available || !form.assignedToMe,
     );
-  }
-
-  // Loading state
-  if (isTaskCountsLoading || typeof taskCounts === "undefined") {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {userTaskDefs.map((name) => (
-            <div
-              key={name}
-              className="relative rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-6 shadow-sm animate-pulse"
-            >
-              {/* Status indicator skeleton */}
-              <div className="absolute top-4 right-4">
-                <div className="w-3 h-3 rounded-full bg-gray-200" />
-              </div>
-
-              {/* Header skeleton */}
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-3 bg-gray-100 rounded-xl">
-                  <div className="h-6 w-6 bg-gray-200 rounded" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-                  <div className="h-4 bg-gray-100 rounded w-1/2" />
-                </div>
-              </div>
-
-              {/* Statistics skeleton */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="h-4 bg-gray-200 rounded w-20" />
-                  <div className="h-4 bg-gray-200 rounded w-8" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-200" />
-                      <div className="h-3 bg-gray-200 rounded w-16" />
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded w-6" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-200" />
-                      <div className="h-3 bg-gray-200 rounded w-20" />
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded w-6" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress bar skeleton */}
-              <div className="mt-4 pt-4 border-t border-border/50">
-                <div className="flex justify-between mb-2">
-                  <div className="h-3 bg-gray-200 rounded w-12" />
-                  <div className="h-3 bg-gray-200 rounded w-8" />
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Empty state
-  if (userTaskDefs.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
-        <div className="p-4 bg-muted/50 rounded-full">
-          <ClipboardList className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">
-            No UserTaskDefs found
-          </h3>
-          <p className="text-muted-foreground max-w-md">
-            You don't have any UserTaskDefs registered yet. UserTaskDefs are
-            created when you deploy workflows that contain UserTasks.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {userTaskDefs.map((name: string) => {
-          const counts = taskCounts.find(
-            (count: UserTaskDefCount) => count.name === name,
-          ) || {
-            totalCount: 0,
-            unassignedCount: 0,
-            assignedToMeCount: 0,
-          };
-
-          const hasActiveUserTasks = counts.totalCount > 0;
-
-          return (
-            <Link key={name} href={`/${tenantId}/admin/${name}`}>
-              <div className="group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card to-card/50 p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 cursor-pointer h-full">
-                {/* Background Pattern */}
-                <div className="absolute inset-0 bg-grid-pattern opacity-5 group-hover:opacity-10 transition-opacity duration-300" />
-
-                {/* Status Indicator */}
-                <div className="absolute top-4 right-4">
-                  <div
-                    className={`w-3 h-3 rounded-full ${hasActiveUserTasks ? "bg-green-500" : "bg-gray-300"} shadow-sm`}
-                  >
-                    {hasActiveUserTasks && (
-                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Header */}
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="relative">
-                    <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl border border-primary/20 group-hover:shadow-md transition-all duration-300">
-                      <ClipboardList className="h-6 w-6 text-primary" />
-                    </div>
-                    {hasActiveUserTasks && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-                        <div className="w-1 h-1 bg-white rounded-full" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
+    <div className="space-y-4">
+      <div className="relative w-full sm:w-64">
+        <Input
+          aria-label="Search forms"
+          placeholder="Search forms..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="pr-10"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setSearch("");
+          }}
+        />
+        {search && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Clear form search"
+            onClick={() => setSearch("")}
+            className="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2"
+          >
+            <X className="size-4" />
+          </Button>
+        )}
+      </div>
+      {countError && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>Some task counts could not be loaded</AlertTitle>
+          <AlertDescription>
+            The forms are still available below.
+          </AlertDescription>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isFetching}
+            onClick={() => refetch()}
+            className="mt-3"
+          >
+            <RefreshCw className="mr-2 size-4" />
+            Retry counts
+          </Button>
+        </Alert>
+      )}
+      <p className="text-sm text-muted-foreground">
+        Showing {matchingForms.length} of {userTaskDefs.length} loaded forms
+      </p>
+      <div>
+        <Table aria-label="Forms">
+          <TableHeader>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="w-2/5">Form</TableHead>
+              <TableHead className="text-right whitespace-nowrap">
+                Total tasks
+              </TableHead>
+              <TableHead className="text-right">Available</TableHead>
+              <TableHead className="text-right whitespace-nowrap">
+                Assigned to me
+              </TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {matchingForms.map((name) => {
+              const form = counts?.find((item) => item.name === name);
+              const href = `/${tenantId}/admin/${encodeURIComponent(name)}`;
+              return (
+                <TableRow
+                  key={name}
+                  className="border-border last:border-b-0 hover:bg-transparent"
+                >
+                  <TableCell>
+                    <Link href={href} className="hover:underline">
                       {name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      UserTaskDef
-                    </p>
-                  </div>
-                </div>
-
-                {/* Statistics */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Total UserTasks
-                    </span>
-                    <span className="font-medium text-foreground">
-                      {counts.totalCount > 99 ? "99+" : counts.totalCount}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-orange-500" />
-                        <span className="text-sm text-muted-foreground">
-                          Unassigned
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium text-orange-600">
-                        {counts.unassignedCount > 99
-                          ? "99+"
-                          : counts.unassignedCount}
-                      </span>
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <Count count={form?.total} loading={loadingCounts} />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-info-fg">
+                    <Count count={form?.available} loading={loadingCounts} />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-warning-strong">
+                    <Count count={form?.assignedToMe} loading={loadingCounts} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            asChild
+                          >
+                            <Link
+                              href={href}
+                              aria-label={`View tasks for ${name}`}
+                            >
+                              <ListTodo aria-hidden className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View tasks</TooltipContent>
+                      </Tooltip>
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                        <span className="text-sm text-muted-foreground">
-                          Assigned to me
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium text-blue-600">
-                        {counts.assignedToMeCount > 99
-                          ? "99+"
-                          : counts.assignedToMeCount}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Action Badge */}
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-md shadow-sm">
-                    View Details →
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {matchingForms.length === 0 && (
+              <TableRow className="border-border">
+                <TableCell
+                  colSpan={5}
+                  className="py-10 text-center text-muted-foreground"
+                >
+                  {search
+                    ? "No forms match your search."
+                    : "No forms are registered yet."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

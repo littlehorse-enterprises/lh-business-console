@@ -16,6 +16,7 @@ export AUTH_KEYCLOAK_SECRET="any-secret"
 export AUTH_KEYCLOAK_ISSUER='http://localhost:8888/realms/default'
 
 export LHUT_API_URL="http://localhost:8089"
+export LHUT_KEYCLOAK_THEME_SYNC=true
 export LHUT_AUTHORITIES='$.realm_access.roles,$.resource_access.*.roles'
 
 node /lh-user-tasks-bridge-console/console/server.js

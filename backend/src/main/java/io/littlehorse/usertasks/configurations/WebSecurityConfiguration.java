@@ -2,25 +2,23 @@ package io.littlehorse.usertasks.configurations;
 
 import com.c4_soft.springaddons.security.oidc.starter.OpenidProviderPropertiesResolver;
 import com.c4_soft.springaddons.security.oidc.starter.properties.SpringAddonsOidcProperties;
+import com.c4_soft.springaddons.security.oidc.starter.synchronised.resourceserver.ResourceServerExpressionInterceptUrlRegistryPostProcessor;
+import com.c4_soft.springaddons.security.oidc.starter.synchronised.resourceserver.ResourceServerSynchronizedHttpSecurityPostProcessor;
 import io.littlehorse.sdk.common.config.LHConfig;
 import io.littlehorse.sdk.common.proto.LittleHorseGrpc;
 import io.littlehorse.sdk.common.proto.TenantId;
-import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -33,22 +31,20 @@ import org.springframework.util.StringUtils;
 public class WebSecurityConfiguration {
 
     @Bean
-    SecurityFilterChain securityFilterChain(
-            HttpSecurity http, AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver)
-            throws Exception {
-        String[] publicPaths = {"/config/**", "/api-docs/**", "/swagger-ui/**", "/actuator/**"
-        }; // These paths do not require authentication
+    ResourceServerExpressionInterceptUrlRegistryPostProcessor authorizeRequests() {
+        String[] publicPaths = {"/config/**", "/api-docs/**", "/swagger-ui/**", "/actuator/**"};
+        return auth -> auth.requestMatchers(HttpMethod.GET, publicPaths)
+                .permitAll()
+                .anyRequest()
+                .authenticated();
+    }
 
-        http.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.GET, publicPaths)
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.authenticationManagerResolver(authenticationManagerResolver))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    @Bean
+    ResourceServerSynchronizedHttpSecurityPostProcessor configureResourceServer() {
+        // Customize the starter's chain so there is only one catch-all filter chain.
+        return http -> http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable);
-
-        return http.build();
     }
 
     @Component

@@ -22,7 +22,7 @@ jobs:
       prerelease: ${{ steps.release.outputs.prerelease }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Parse release version
         id: release
@@ -44,10 +44,10 @@ jobs:
       ORG_GRADLE_PROJECT_version: ${{ needs.prepare.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6.2.0
         with:
           distribution: corretto
           java-version: "25"
@@ -68,10 +68,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6.2.0
         with:
           distribution: corretto
           java-version: "25"
@@ -82,7 +82,7 @@ jobs:
         run: ./gradlew installDist
 
       - name: Publish release image to GHCR
-        uses: littlehorse-enterprises/publish-image@v1
+        uses: littlehorse-enterprises/publish-image@v1.4.1
         with:
           image-name: lh-workflow-diffuser
           context: diffuser
@@ -101,12 +101,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
       - name: Generate changelog
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@v4.9.1
         with:
           config: diffuser/cliff.toml
           args: --verbose --current --tag-pattern "diffuser-v.*" --include-path "diffuser/**"

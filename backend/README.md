@@ -2,6 +2,8 @@
 
 Backend component that serves as a proxy between any OIDC compliant identity provider and LittleHorse Kernel `UserTasks`.
 
+The backend uses Spring Boot 4.0.9 and Java 25.
+
 ## Getting Started
 
 ### Software requirements
@@ -9,7 +11,7 @@ Backend component that serves as a proxy between any OIDC compliant identity pro
 The following software packages are needed to be installed:
 
 - [Docker](https://www.docker.com/) with Docker Compose and a running Docker daemon
-- [Java 21](https://www.oracle.com/mx/java/technologies/downloads/) (JDK)
+- [Java 25](https://www.oracle.com/mx/java/technologies/downloads/) (JDK)
 - [Node.js](https://nodejs.org/) 20.9 or later
 - [pnpm](https://pnpm.io/) 10.19.0 (pinned in the root `package.json`)
 

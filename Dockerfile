@@ -1,4 +1,4 @@
-FROM amazoncorretto:21
+FROM amazoncorretto:25
 ARG LH_VERSION
 LABEL io.littlehorse.version=${LH_VERSION}
 

@@ -1,6 +1,8 @@
 ARG LH_VERSION=latest
 FROM ghcr.io/littlehorse-enterprises/littlehorse/lhctl:${LH_VERSION} AS lhctl
 
+FROM amazoncorretto:25 AS backend-java
+
 FROM ghcr.io/littlehorse-enterprises/littlehorse/lh-standalone:${LH_VERSION}
 ARG LH_VERSION
 LABEL io.littlehorse.version=${LH_VERSION}
@@ -9,6 +11,9 @@ ARG KEYCLOAK_VERSION="26.5.6"
 ENV PATH=${PATH}:/keycloak/bin
 
 COPY --from=lhctl /usr/local/bin/lhctl /usr/local/bin/lhctl
+
+# Use Java 25 for the backend while retaining the base JVM for LH and Keycloak.
+COPY --from=backend-java /usr/lib/jvm/java-25-amazon-corretto /opt/backend-java
 
 # The base image ships Node 18, below the Node >= 20.9 that Next.js 16 requires.
 RUN yum install -y --allowerasing jq unzip python3-pip nodejs22 \

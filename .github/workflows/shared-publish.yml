@@ -14,19 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.2.0
         with:
-          java-version: "21"
+          java-version: "25"
           distribution: "corretto"
 
       - name: Test and Build Artifact
         run: ./gradlew backend:build
 
       - name: Upload Backend Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: lh-user-tasks-bridge-backend-jar
           path: backend/build/libs
@@ -35,22 +35,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.2.0
         with:
-          java-version: "21"
+          java-version: "25"
           distribution: "corretto"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.1
         with:
           version: 10.19.0
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
@@ -80,7 +80,7 @@ jobs:
         run: ./gradlew demo-workflow:build
 
       - name: Upload Console Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: lh-user-tasks-bridge-console
           include-hidden-files: true
@@ -90,7 +90,7 @@ jobs:
             ./node_modules
 
       - name: Upload Demo Workflow Jar Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: lh-user-tasks-bridge-demo-jar
           include-hidden-files: true
@@ -98,7 +98,7 @@ jobs:
             ./demo-workflow/build/libs/lh-user-tasks-bridge-demo-all.jar
 
       - name: Upload Demo Workflow Sh Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: lh-user-tasks-bridge-demo-sh
           include-hidden-files: true
@@ -112,36 +112,36 @@ jobs:
       - build-console
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Download Backend Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: lh-user-tasks-bridge-backend-jar
           path: ./backend/build/libs/
 
       - name: Download Console Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: lh-user-tasks-bridge-console
           path: ./
 
       - name: Download Demo Workflow Jar Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: lh-user-tasks-bridge-demo-jar
           path: ./demo-workflow/build/libs
 
       - name: Download Demo Workflow Sh Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: lh-user-tasks-bridge-demo-sh
           path: ./demo-workflow
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.2.0
         with:
-          java-version: "21"
+          java-version: "25"
           distribution: "corretto"
 
       - name: Read LittleHorse Version
@@ -151,9 +151,9 @@ jobs:
 
       - name: Build and Publish Backend
         id: publish-image
-        uses: littlehorse-enterprises/publish-image@v1
+        uses: littlehorse-enterprises/publish-image@v1.4.1
         with:
-          image-name: lh-user-tasks-bridge-backend
+          image-name: lh-business-console-backend
           dockerfile: Dockerfile
           build-args: |
             LH_VERSION=${{ env.LH_VERSION }}
@@ -165,9 +165,9 @@ jobs:
 
       - name: Build and Publish Standalone
         id: publish-standalone-image
-        uses: littlehorse-enterprises/publish-image@v1
+        uses: littlehorse-enterprises/publish-image@v1.4.1
         with:
-          image-name: lh-user-tasks-bridge-standalone
+          image-name: lh-business-console-standalone
           dockerfile: standalone/Dockerfile
           build-args: |
             LH_VERSION=${{ env.LH_VERSION }}

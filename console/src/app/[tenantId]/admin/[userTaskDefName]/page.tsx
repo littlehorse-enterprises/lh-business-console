@@ -32,7 +32,7 @@ export default async function TaskPage({
             asChild
             className="text-muted-foreground hover:text-foreground h-8 px-2 gap-1"
           >
-            <Link href={`/${tenantId}/admin`}>
+            <Link href={`/${tenantId}/admin?view=forms`}>
               <ArrowLeft className="h-4 w-4" />
               Back
             </Link>
@@ -42,10 +42,10 @@ export default async function TaskPage({
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center text-sm text-muted-foreground">
           <Link
-            href={`/${tenantId}/admin`}
+            href={`/${tenantId}/admin?view=forms`}
             className="hover:text-foreground transition-colors"
           >
-            UserTaskDefs
+            Forms
           </Link>
           <ChevronRight className="h-4 w-4 mx-2" />
           <span className="text-foreground font-medium">{userTaskDefName}</span>
@@ -53,6 +53,8 @@ export default async function TaskPage({
       </div>
 
       <ListUserTasks
+        key={userTaskDefName}
+        admin
         userGroups={adminListUserGroupsResponse.data?.groups || []}
         userTaskDefName={userTaskDefName}
         initialData={

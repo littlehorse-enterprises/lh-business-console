@@ -38,6 +38,7 @@ import CompleteUserTaskButton from "./action-buttons/complete";
 
 import UserTaskComments from "./action-buttons/comments/comment-input";
 import NotesTextArea from "./notes";
+import { TaskStatus } from "./status";
 
 const getStatusConfig = (status: string) => {
   switch (status) {
@@ -78,10 +79,12 @@ export default function UserTask({
   userTask,
   admin,
   claimable,
+  embedded = false,
 }: {
   userTask: SimpleUserTaskRunDTO;
   admin?: boolean;
   claimable?: boolean;
+  embedded?: boolean;
 }) {
   const session = useSession();
   const user = session.data?.user;
@@ -89,28 +92,31 @@ export default function UserTask({
 
   const statusConfig = getStatusConfig(userTask.status);
 
-  const StatusIcon = statusConfig.icon;
   return (
-    <Card className="group relative overflow-hidden bg-card border border-border/50 hover:border-border hover:shadow-lg transition-all duration-300 ease-out">
+    <Card
+      className={
+        embedded
+          ? "gap-6 rounded-none border-0 bg-transparent p-0 shadow-none"
+          : "group relative overflow-hidden bg-card border border-border/50 hover:border-border hover:shadow-lg transition-all duration-300 ease-out"
+      }
+    >
       {/* Status indicator bar */}
-      <div
-        className={`absolute top-0 left-0 right-0 h-1 ${statusConfig.color.split(" ")[0]}`}
-      />
+      {!embedded && (
+        <div
+          className={`absolute top-0 left-0 right-0 h-1 ${statusConfig.color.split(" ")[0]}`}
+        />
+      )}
 
-      <CardHeader className="pb-4">
+      <CardHeader className={embedded ? "p-0" : "pb-4"}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-              {userTask.userTaskDefName}
-            </CardTitle>
+            {!embedded && (
+              <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                {userTask.userTaskDefName}
+              </CardTitle>
+            )}
             <div className="flex items-center gap-2 mt-2">
-              <Badge
-                variant="outline"
-                className={`${statusConfig.color} border-0 font-medium`}
-              >
-                <StatusIcon className="h-3 w-3 mr-1" />
-                {statusConfig.label}
-              </Badge>
+              <TaskStatus status={userTask.status} />
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -144,18 +150,18 @@ export default function UserTask({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 pb-4">
+      <CardContent className={embedded ? "space-y-4 p-0" : "space-y-4 pb-4"}>
         {/* Key Information Grid */}
         <div className="grid grid-cols-1 gap-3">
           <InfoItem
             icon={ClipboardList}
-            label="UserTask ID"
+            label="Task ID"
             value={userTask.id}
             copyable
           />
           <InfoItem
             icon={Workflow}
-            label="Workflow Run"
+            label="Workflow"
             value={userTask.wfRunId}
             copyable
           />
@@ -227,7 +233,13 @@ export default function UserTask({
         )}
       </CardContent>
 
-      <CardFooter className="pt-4 border-t border-border/50 bg-muted/20">
+      <CardFooter
+        className={
+          embedded
+            ? "border-t border-border px-0 pt-4"
+            : "pt-4 border-t border-border/50 bg-muted/20"
+        }
+      >
         {/* Action Buttons */}
         {claimable && userTask.status === "UNASSIGNED" && (
           <div className="w-full">

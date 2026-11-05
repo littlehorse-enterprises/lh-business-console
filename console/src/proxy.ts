@@ -67,7 +67,9 @@ export const proxy = auth(async (req) => {
 });
 
 export const config = {
+  // This exact route is a self-contained design demo containing only fixtures.
+  // Tenant routes and all authenticated APIs retain their existing auth checks.
   matcher: [
-    "/((?!api|login(?:/|$)|_next/static|_next/image|images|favicon.ico).*)",
+    "/((?!home-preview/?$|api|login(?:/|$)|_next/static|_next/image|images|favicon.ico).*)",
   ],
 };

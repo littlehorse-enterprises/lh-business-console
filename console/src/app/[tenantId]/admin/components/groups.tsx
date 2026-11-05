@@ -363,7 +363,7 @@ export default function GroupsManagement({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Groups</h2>
+        <h1 className="text-2xl font-semibold tracking-tight">Groups</h1>
         <div className="flex space-x-2">
           {selectedGroups.length > 0 && (
             <Button

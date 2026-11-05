@@ -33,8 +33,22 @@ configure_keycloak() {
         password="$KEYCLOAK_ADMIN_PASSWORD" \
         grant_type=password | jq -r ".access_token")
 
+    configure_login_theme() {
+        local client_json client_id client_attributes
+        client_json=$(http --ignore-stdin -b -A bearer -a "${KEYCLOAK_ADMIN_ACCESS_TOKEN}" \
+            "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=${KEYCLOAK_CLIENT_ID}")
+        client_id=$(jq -r '.[0].id // empty' <<< "$client_json")
+        if [ -n "$client_id" ]; then
+            client_attributes=$(jq -c '(.[0].attributes // {}) + {login_theme: "littlehorse"}' <<< "$client_json")
+            http --ignore-stdin -q --check-status -A bearer -a "${KEYCLOAK_ADMIN_ACCESS_TOKEN}" \
+                PUT "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${client_id}" \
+                attributes:="$client_attributes"
+        fi
+    }
+
     # Check if realm exists first
     if http --ignore-stdin -A bearer -a "${KEYCLOAK_ADMIN_ACCESS_TOKEN}" ${KEYCLOAK_URL}/admin/realms/${REALM_NAME} -q --check-status; then
+        configure_login_theme
         echo "$REALM_NAME realm already exists, not recreating. Exiting success"
         exit 0
     fi
@@ -79,6 +93,7 @@ configure_keycloak() {
           frontchannelLogout:=true
 
    echo "Client successfully created"
+   configure_login_theme
 
 #  Here we create a custom claim that is also added to the accessToken. This custom claim is used by the lh-user-tasks-bridge-api
 #  to verify that the users accessing its endpoints are allowed to see resources from a given tenant.

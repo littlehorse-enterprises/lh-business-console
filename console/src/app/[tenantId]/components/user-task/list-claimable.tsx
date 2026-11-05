@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorResponse, ErrorType } from "@/lib/error-handling";
+import { readAvailableTaskFilters } from "@/lib/task-filters";
 import {
   Alert,
   AlertDescription,
@@ -18,7 +19,7 @@ import {
   UserTaskRunListDTO,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 import { AlertCircle, Loader2Icon, RefreshCw } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import { getClaimableTasks } from "../../actions/user";
@@ -34,12 +35,13 @@ export default function ListClaimableUserTasks({
   initialErrors?: (ErrorResponse | undefined)[];
 }) {
   const tenantId = useParams().tenantId as string;
+  const filters = readAvailableTaskFilters(useSearchParams());
   const [activeGroup, setActiveGroup] = useState<string>(userGroups[0].id);
   const [errors, setErrors] = useState<Record<string, ErrorResponse>>({});
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Claimable UserTasks</h1>
+      <h2 className="text-lg font-semibold mb-4">Available tasks</h2>
 
       <Tabs
         defaultValue={userGroups[0].id}
@@ -73,17 +75,18 @@ export default function ListClaimableUserTasks({
             // Reached the end
             if (previousPageData && !previousPageData.bookmark) return null;
 
-            // First page, no bookmark
-            if (pageIndex === 0) return [tenantId, userGroup.id, undefined];
-
-            // Add the bookmark from the previous page
-            return [tenantId, userGroup.id, previousPageData?.bookmark];
+            return [
+              tenantId,
+              userGroup.id,
+              filters,
+              previousPageData?.bookmark,
+            ];
           };
 
           const { data, size, setSize, isValidating, mutate } =
             useSWRInfinite<UserTaskRunListDTO>(
               getKey,
-              async ([tenantId, userGroupId, bookmark]) => {
+              async ([tenantId, userGroupId, dateFilters, bookmark]) => {
                 // Clear error when fetching
                 if (errors[userGroup.id]) {
                   setErrors((prev) => {
@@ -94,6 +97,7 @@ export default function ListClaimableUserTasks({
                 }
 
                 const result = await getClaimableTasks(tenantId, {
+                  ...dateFilters,
                   user_group_id: userGroupId,
                   limit: 10,
                   bookmark: bookmark || undefined,
@@ -157,16 +161,16 @@ export default function ListClaimableUserTasks({
             );
           }
 
-          const hasNextPage = data && data[data.length - 1]?.bookmark != null;
+          const hasNextPage = !!data?.[data.length - 1]?.bookmark;
           const isFetchingNextPage = isValidating && data && data.length > 0;
 
           return (
             <TabsContent key={userGroup.id} value={userGroup.id}>
               <ListUserTasks
                 userGroups={userGroups}
-                initialData={
-                  data ? data[0] : { userTasks: [], bookmark: undefined }
-                }
+                initialData={{
+                  userTasks: data?.flatMap((page) => page.userTasks) || [],
+                }}
                 claimable
               />
 

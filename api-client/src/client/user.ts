@@ -5,7 +5,7 @@ import {
   UserDTO,
   UserGroupListDTO,
   UserTaskRunListDTO,
-  UserTaskVariableValue,
+  TaskOutputRequest,
 } from "../types/common";
 import {
   CancelUserTaskParams,
@@ -55,13 +55,27 @@ export class UserController {
    */
   async completeUserTask(
     params: CompleteUserTaskParams,
-    results: Record<string, UserTaskVariableValue>,
+    request: TaskOutputRequest,
   ): Promise<void> {
     return this.client.fetch<void>(
       `/tasks/${params.wf_run_id}/${params.user_task_guid}/result`,
       {
         method: "POST",
-        body: JSON.stringify(results),
+        body: JSON.stringify(request),
+      },
+    );
+  }
+
+  /** Replaces the saved draft without completing the task. */
+  async saveUserTaskProgress(
+    params: CompleteUserTaskParams,
+    request: TaskOutputRequest,
+  ): Promise<void> {
+    return this.client.fetch<void>(
+      `/tasks/${params.wf_run_id}/${params.user_task_guid}/progress`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
       },
     );
   }

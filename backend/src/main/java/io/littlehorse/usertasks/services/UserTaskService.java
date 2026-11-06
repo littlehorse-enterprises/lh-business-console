@@ -8,7 +8,6 @@ import io.grpc.StatusRuntimeException;
 import io.littlehorse.sdk.common.proto.*;
 import io.littlehorse.usertasks.exceptions.CustomUnauthorizedException;
 import io.littlehorse.usertasks.exceptions.NotFoundException;
-import io.littlehorse.usertasks.models.common.UserTaskVariableValue;
 import io.littlehorse.usertasks.models.requests.AssignmentRequest;
 import io.littlehorse.usertasks.models.requests.CompleteUserTaskRequest;
 import io.littlehorse.usertasks.models.requests.StandardPagination;
@@ -21,7 +20,7 @@ import io.littlehorse.usertasks.models.responses.DetailedUserTaskRunDTO;
 import io.littlehorse.usertasks.models.responses.SimpleUserTaskRunDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskDefListDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskRunListDTO;
-import io.littlehorse.usertasks.util.enums.UserTaskFieldType;
+import io.littlehorse.usertasks.util.ProtobufJson;
 import jakarta.annotation.Nullable;
 import java.util.*;
 import java.util.Map;
@@ -116,7 +115,14 @@ public class UserTaskService {
             throw new NotFoundException("Could not find associated UserTaskDef!");
         }
 
-        var resultDto = DetailedUserTaskRunDTO.fromUserTaskRun(userTaskRunResult, userTaskDefResult);
+        requireSupportedDefinition(userTaskRunResult, userTaskDefResult);
+        var resultDto = DetailedUserTaskRunDTO.fromUserTaskRun(userTaskRunResult);
+        if (userTaskRunResult.hasResultStructDefId()) {
+            resultDto.setStructDefs(
+                    TaskSchemaResolver.resolve(tenantClient, userTaskRunResult.getResultStructDefId()).stream()
+                            .map(ProtobufJson::write)
+                            .toList());
+        }
 
         if (isAdminRequest) {
             Set<AuditEventDTO> events = new HashSet<>();
@@ -138,58 +144,81 @@ public class UserTaskService {
             @NonNull String tenantId,
             boolean isAdminRequest) {
         try {
-            log.info("Completing UserTaskRun");
-
-            Optional<DetailedUserTaskRunDTO> userTaskDetails = getUserTaskDetails(
-                    request.getWfRunId(),
-                    request.getUserTaskRunGuid(),
-                    tenantId,
-                    userId,
-                    null,
-                    isAdminRequest); // TODO: UserGroup param must be added here later on
-
-            if (userTaskDetails.isPresent()) {
-                if (isUserTaskTerminated(userTaskDetails.get().getStatus().toServerStatus())) {
-                    throw new ResponseStatusException(
-                            HttpStatus.FORBIDDEN,
-                            "The UserTask you are trying to complete is already DONE or CANCELLED");
-                }
-
-                LittleHorseGrpc.LittleHorseBlockingStub tenantClient = getTenantLHClient(tenantId);
-
-                validateMandatoryStringFields(request, userTaskDetails.get().getUserTaskDefName(), tenantClient);
-
-                CompleteUserTaskRunRequest serverRequest = request.toServerRequest(userId);
-
-                tenantClient.completeUserTaskRun(serverRequest);
-
-                log.atInfo()
-                        .setMessage("UserTaskRun with wfRunId: {}, guid: {} was successfully completed")
-                        .addArgument(request.getWfRunId())
-                        .addArgument(request.getUserTaskRunGuid())
-                        .log();
-            }
+            var client = getTenantLHClient(tenantId);
+            var run = getWritableTask(client, request, userId, isAdminRequest);
+            client.completeUserTaskRun(
+                    request.toServerRequest(userId, run.hasResultStructDefId() ? run.getResultStructDefId() : null));
         } catch (StatusRuntimeException e) {
-            log.atError()
-                    .setMessage("Something went wrong in LH Kernel with completion process for UserTaskRun with "
-                            + "wfRunId: {} and guid: {} ")
-                    .addArgument(request.getWfRunId())
-                    .addArgument(request.getUserTaskRunGuid())
-                    .log();
-
-            if (e.getStatus().getCode() == Status.Code.INVALID_ARGUMENT) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-            }
-
-            throw e;
-        } catch (Exception e) {
-            log.atError()
-                    .setMessage("Completion of UserTaskRun with wfRunId: {}, guid: {} failed")
-                    .addArgument(request.getWfRunId())
-                    .addArgument(request.getUserTaskRunGuid())
-                    .log();
-            throw e;
+            throw translateSubmissionError(e);
         }
+    }
+
+    public void saveUserTaskProgress(
+            @NonNull String userId,
+            @NonNull CompleteUserTaskRequest request,
+            @NonNull String tenantId,
+            boolean isAdminRequest) {
+        try {
+            var client = getTenantLHClient(tenantId);
+            var run = getWritableTask(client, request, userId, isAdminRequest);
+            if (!run.hasResultStructDefId()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This task has no progress to save");
+            }
+            var output = ProtobufJson.readOutput(request.getOutput(), run.getResultStructDefId());
+            client.saveUserTaskRunProgress(SaveUserTaskRunProgressRequest.newBuilder()
+                    .setUserTaskRunId(run.getId())
+                    .setUserId(userId)
+                    .setOutput(output)
+                    .setPolicy(
+                            isAdminRequest
+                                    ? SaveUserTaskRunProgressRequest.SaveUserTaskRunAssignmentPolicy.IGNORE_CLAIM
+                                    : SaveUserTaskRunProgressRequest.SaveUserTaskRunAssignmentPolicy
+                                            .FAIL_IF_CLAIMED_BY_OTHER)
+                    .build());
+        } catch (StatusRuntimeException e) {
+            throw translateSubmissionError(e);
+        }
+    }
+
+    private UserTaskRun getWritableTask(
+            LittleHorseGrpc.LittleHorseBlockingStub client,
+            CompleteUserTaskRequest request,
+            String userId,
+            boolean isAdminRequest) {
+        var run = client.getUserTaskRun(buildUserTaskRunId(request.getWfRunId(), request.getUserTaskRunGuid()));
+        if (run == null) throw new NotFoundException("Could not find UserTaskRun!");
+        if (!isAdminRequest && (!run.hasUserId() || !run.getUserId().equals(userId))) {
+            throw new CustomUnauthorizedException("Claim the task before submitting its output");
+        }
+        if (isUserTaskTerminated(run.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The UserTask is already DONE or CANCELLED");
+        }
+        var definition = client.getUserTaskDef(run.getUserTaskDefId());
+        if (definition == null) throw new NotFoundException("Could not find associated UserTaskDef!");
+        requireSupportedDefinition(run, definition);
+        return run;
+    }
+
+    private void requireSupportedDefinition(UserTaskRun run, UserTaskDef definition) {
+        if (definition.getFieldsCount() > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Legacy field-backed UserTasks are not supported; register a Struct-backed UserTaskDef");
+        }
+        if (definition.hasResultStructDefId() && !run.hasResultStructDefId()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY, "This UserTaskRun does not contain a resolved StructDefId");
+        }
+    }
+
+    private RuntimeException translateSubmissionError(StatusRuntimeException error) {
+        return switch (error.getStatus().getCode()) {
+            case INVALID_ARGUMENT -> new ResponseStatusException(HttpStatus.BAD_REQUEST, error.getMessage(), error);
+            case FAILED_PRECONDITION -> new ResponseStatusException(HttpStatus.CONFLICT, error.getMessage(), error);
+            case NOT_FOUND -> new NotFoundException("Could not find UserTaskRun or its schema");
+            case PERMISSION_DENIED -> new ResponseStatusException(HttpStatus.FORBIDDEN);
+            default -> error;
+        };
     }
 
     public AuditEventDTO comment(PutCommentRequest request, String userId, String tenantId, boolean isAdminRequest) {
@@ -757,35 +786,6 @@ public class UserTaskService {
         }
     }
 
-    private void validateMandatoryStringFields(
-            CompleteUserTaskRequest request,
-            String userTaskDefName,
-            LittleHorseGrpc.LittleHorseBlockingStub tenantClient) {
-        UserTaskDefId userTaskDefId =
-                UserTaskDefId.newBuilder().setName(userTaskDefName).build();
-
-        UserTaskDef userTaskDef = tenantClient.getUserTaskDef(userTaskDefId);
-        List<String> mandatoryStringFieldsNames = getMandatoryStringFieldsNames(userTaskDef);
-
-        if (!CollectionUtils.isEmpty(mandatoryStringFieldsNames)) {
-            Map<String, UserTaskVariableValue> onlyStringVariableValues = getStringVariableValues(request);
-
-            if (!CollectionUtils.isEmpty(onlyStringVariableValues)) {
-                boolean stringFieldsHaveValidInputs =
-                        haveStringFieldsValidInputs(onlyStringVariableValues, mandatoryStringFieldsNames);
-
-                if (!stringFieldsHaveValidInputs) {
-                    String joinedFieldNames = String.join(", ", mandatoryStringFieldsNames);
-                    String errorMessage = String.format(
-                            "Mandatory Field(s): %s contain invalid inputs (null or whitespace-only values)",
-                            joinedFieldNames);
-
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
-                }
-            }
-        }
-    }
-
     private boolean isUserTaskTerminated(UserTaskRunStatus currentStatus) {
         return TERMINAL_STATUSES.contains(currentStatus);
     }
@@ -809,27 +809,6 @@ public class UserTaskService {
         return userTaskRun.getStatus().equals(UserTaskRunStatus.UNASSIGNED)
                 && !CollectionUtils.isEmpty(userGroups)
                 && userGroups.contains(userTaskRun.getUserGroup().trim());
-    }
-
-    private List<String> getMandatoryStringFieldsNames(UserTaskDef userTaskDef) {
-        return userTaskDef.getFieldsList().stream()
-                .filter(userTaskField ->
-                        userTaskField.getType().equals(VariableType.STR) && userTaskField.getRequired())
-                .map(UserTaskField::getName)
-                .toList();
-    }
-
-    private Map<String, UserTaskVariableValue> getStringVariableValues(CompleteUserTaskRequest request) {
-        return request.getResults().entrySet().stream()
-                .filter(entry -> entry.getValue().getType().equals(UserTaskFieldType.STRING))
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    private boolean haveStringFieldsValidInputs(
-            Map<String, UserTaskVariableValue> stringVariableValues, List<String> mandatoryStringFieldsNames) {
-        return stringVariableValues.entrySet().stream()
-                .filter(entry -> mandatoryStringFieldsNames.contains(entry.getKey()))
-                .allMatch(entry -> StringUtils.hasText((String) entry.getValue().getValue()));
     }
 
     private HashMap<Integer, AuditEventDTO> getMostRecentComments(UserTaskRun utr) {

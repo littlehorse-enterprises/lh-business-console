@@ -4,14 +4,13 @@ import static io.littlehorse.usertasks.util.DateUtil.timestampToLocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import io.littlehorse.sdk.common.proto.UserTaskDef;
 import io.littlehorse.sdk.common.proto.UserTaskRun;
-import io.littlehorse.sdk.common.proto.VariableValue;
 import io.littlehorse.usertasks.idp_adapters.IStandardIdentityProviderAdapter;
 import io.littlehorse.usertasks.models.common.UserDTO;
 import io.littlehorse.usertasks.models.common.UserGroupDTO;
-import io.littlehorse.usertasks.models.common.UserTaskVariableValue;
+import io.littlehorse.usertasks.util.ProtobufJson;
 import io.littlehorse.usertasks.util.enums.UserTaskStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -20,12 +19,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import tools.jackson.databind.JsonNode;
 
 /**
  * {@code DetailedUserTaskRunDTO} is a Data Transfer Object that contains detailed information about a
@@ -60,21 +59,22 @@ public class DetailedUserTaskRunDTO {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
     private LocalDateTime scheduledTime;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "The exact StructDefId pinned to this run, in protobuf JSON format")
+    private JsonNode resultStructDefId;
+
     @NotNull
-    private List<UserTaskFieldDTO> fields;
+    @Schema(description = "Root StructDef followed by referenced named StructDefs, in protobuf JSON format")
+    private List<JsonNode> structDefs;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Map<String, UserTaskVariableValue> results;
+    @Schema(description = "Current Struct VariableValue in protobuf JSON format; may be incomplete before completion")
+    private JsonNode output;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Set<AuditEventDTO> events;
 
-    public static DetailedUserTaskRunDTO fromUserTaskRun(
-            @NonNull UserTaskRun userTaskRun, @NonNull UserTaskDef userTaskDef) {
-        var fields = userTaskDef.getFieldsList().stream()
-                .map(UserTaskFieldDTO::fromServerUserTaskField)
-                .toList();
-
+    public static DetailedUserTaskRunDTO fromUserTaskRun(@NonNull UserTaskRun userTaskRun) {
         return DetailedUserTaskRunDTO.builder()
                 .id(userTaskRun.getId().getUserTaskGuid())
                 .wfRunId(userTaskRun.getId().getWfRunId().getId())
@@ -84,15 +84,13 @@ public class DetailedUserTaskRunDTO {
                 .notes(userTaskRun.getNotes())
                 .status(UserTaskStatus.fromServerStatus(userTaskRun.getStatus()))
                 .scheduledTime(timestampToLocalDateTime(userTaskRun.getScheduledTime()))
-                .fields(fields)
-                .results(fromServerTypeResults(userTaskRun.getResultsMap()))
+                .resultStructDefId(
+                        userTaskRun.hasResultStructDefId()
+                                ? ProtobufJson.write(userTaskRun.getResultStructDefId())
+                                : null)
+                .structDefs(List.of())
+                .output(userTaskRun.hasOutput() ? ProtobufJson.write(userTaskRun.getOutput()) : null)
                 .build();
-    }
-
-    private static Map<String, UserTaskVariableValue> fromServerTypeResults(Map<String, VariableValue> serverResults) {
-        return serverResults.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey, entry -> UserTaskVariableValue.fromServerType(entry.getValue())));
     }
 
     public void addAssignmentDetails(

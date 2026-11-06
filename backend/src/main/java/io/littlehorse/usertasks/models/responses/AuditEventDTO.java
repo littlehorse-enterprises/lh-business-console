@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import io.littlehorse.sdk.common.proto.TaskRunId;
 import io.littlehorse.sdk.common.proto.UserTaskEvent;
 import io.littlehorse.usertasks.util.DateUtil;
+import io.littlehorse.usertasks.util.ProtobufJson;
 import io.littlehorse.usertasks.util.enums.UserTaskEventType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -13,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
+import tools.jackson.databind.JsonNode;
 
 /**
  * {@code AuditEventDTO} is a Data Transfer Object that contains information about a specific {@code io.littlehorse.sdk.common.proto.UserTaskEvent}
@@ -28,7 +30,16 @@ public class AuditEventDTO {
     private LocalDateTime time;
 
     @NotNull
-    @Schema(oneOf = {UserTaskExecutedEvent.class, UserTaskAssignedEvent.class, UserTaskCancelledEvent.class})
+    @Schema(
+            oneOf = {
+                UserTaskExecutedEvent.class,
+                UserTaskAssignedEvent.class,
+                UserTaskCancelledEvent.class,
+                UserTaskRunCompletedEvent.class,
+                UserTaskRunSavedEvent.class,
+                UserTaskRunCommentEvent.class,
+                DeleteUserTaskRunCommentEvent.class
+            })
     private IUserTaskEvent event;
 
     @NotNull
@@ -48,6 +59,11 @@ public class AuditEventDTO {
         } else if (serverEvent.hasCancelled()) {
             parsedEvent = UserTaskCancelledEvent.parseFromServer(serverEvent.getCancelled());
             eventType = UserTaskEventType.TASK_CANCELLED;
+        } else if (serverEvent.hasSaved()) {
+            var saved = serverEvent.getSaved();
+            parsedEvent = new UserTaskRunSavedEvent(
+                    saved.getUserId(), saved.hasOutput() ? ProtobufJson.write(saved.getOutput()) : null);
+            eventType = UserTaskEventType.TASK_SAVED;
         } else if (serverEvent.hasCompleted()) {
             parsedEvent = UserTaskRunCompletedEvent.parserFromServer(serverEvent.getCompleted());
             eventType = UserTaskEventType.TASK_COMPLETED;
@@ -69,6 +85,13 @@ public class AuditEventDTO {
                 .event(parsedEvent)
                 .type(eventType)
                 .build();
+    }
+
+    @Data
+    @AllArgsConstructor
+    static class UserTaskRunSavedEvent implements IUserTaskEvent {
+        private String userId;
+        private JsonNode output;
     }
 
     @Data

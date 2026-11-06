@@ -12,7 +12,7 @@ import {
   GetUserTaskDetailParams,
   PostUserTaskCommentParams,
   EditUserTaskCommentParams,
-  UserTaskVariableValue,
+  TaskOutputRequest,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 
 export async function getUserTasks(tenantId: string, params: GetMyTasksParams) {
@@ -35,11 +35,22 @@ export async function getUserTaskDetail(
 export async function completeUserTask(
   tenantId: string,
   params: CompleteUserTaskParams,
-  results: Record<string, UserTaskVariableValue>,
+  request: TaskOutputRequest,
 ) {
   return withErrorHandling(async () => {
     const client = await getClient(tenantId);
-    return client.user.completeUserTask(params, results);
+    return client.user.completeUserTask(params, request);
+  });
+}
+
+export async function saveUserTaskProgress(
+  tenantId: string,
+  params: CompleteUserTaskParams,
+  request: TaskOutputRequest,
+) {
+  return withErrorHandling(async () => {
+    const client = await getClient(tenantId);
+    return client.user.saveUserTaskProgress(params, request);
   });
 }
 

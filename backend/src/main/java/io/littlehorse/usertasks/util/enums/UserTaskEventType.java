@@ -5,6 +5,7 @@ public enum UserTaskEventType {
     TASK_ASSIGNED,
     TASK_CANCELLED,
     TASK_COMPLETED,
+    TASK_SAVED,
     COMMENT_ADDED,
     COMMENT_EDITED,
     COMMENT_DELETED

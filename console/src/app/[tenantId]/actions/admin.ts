@@ -9,7 +9,7 @@ import {
   GetAllUserTaskDefsParams,
   GetUserFromIdentityProviderParams,
   GetUsersFromIdentityProviderParams,
-  UserTaskVariableValue,
+  TaskOutputRequest,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 
 export async function adminGetAllTasks(
@@ -45,11 +45,22 @@ export async function adminGetUserTaskDetail(
 export async function adminCompleteUserTask(
   tenantId: string,
   params: AdminTaskActionParams,
-  results: Record<string, UserTaskVariableValue>,
+  request: TaskOutputRequest,
 ) {
   return withErrorHandling(async () => {
     const client = await getClient(tenantId);
-    return client.admin.completeUserTask(params, results);
+    return client.admin.completeUserTask(params, request);
+  });
+}
+
+export async function adminSaveUserTaskProgress(
+  tenantId: string,
+  params: AdminTaskActionParams,
+  request: TaskOutputRequest,
+) {
+  return withErrorHandling(async () => {
+    const client = await getClient(tenantId);
+    return client.admin.saveUserTaskProgress(params, request);
   });
 }
 

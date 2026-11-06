@@ -16,7 +16,7 @@ import {
   UserDTO,
   UserGroupListDTO,
   UserTaskRunListDTO,
-  UserTaskVariableValue,
+  TaskOutputRequest,
 } from "../types/common";
 import { objectToURLSearchParams } from "../utils";
 
@@ -65,13 +65,27 @@ export class AdminController {
    */
   async completeUserTask(
     params: AdminTaskActionParams,
-    results: Record<string, UserTaskVariableValue>,
+    request: TaskOutputRequest,
   ): Promise<void> {
     return this.client.fetch<void>(
       `/admin/tasks/${params.wf_run_id}/${params.user_task_guid}/result`,
       {
         method: "POST",
-        body: JSON.stringify(results),
+        body: JSON.stringify(request),
+      },
+    );
+  }
+
+  /** Replaces the saved draft without completing the task. */
+  async saveUserTaskProgress(
+    params: AdminTaskActionParams,
+    request: TaskOutputRequest,
+  ): Promise<void> {
+    return this.client.fetch<void>(
+      `/admin/tasks/${params.wf_run_id}/${params.user_task_guid}/progress`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
       },
     );
   }

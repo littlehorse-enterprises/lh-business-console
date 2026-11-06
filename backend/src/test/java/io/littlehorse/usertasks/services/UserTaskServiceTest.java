@@ -13,16 +13,14 @@ import io.grpc.StatusRuntimeException;
 import io.littlehorse.sdk.common.proto.*;
 import io.littlehorse.usertasks.exceptions.CustomUnauthorizedException;
 import io.littlehorse.usertasks.exceptions.NotFoundException;
-import io.littlehorse.usertasks.models.common.UserTaskVariableValue;
 import io.littlehorse.usertasks.models.requests.AssignmentRequest;
 import io.littlehorse.usertasks.models.requests.CompleteUserTaskRequest;
 import io.littlehorse.usertasks.models.requests.UserTaskRequestFilter;
 import io.littlehorse.usertasks.models.responses.SimpleUserTaskRunDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskDefListDTO;
-import io.littlehorse.usertasks.models.responses.UserTaskFieldDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskRunListDTO;
 import io.littlehorse.usertasks.util.DateUtil;
-import io.littlehorse.usertasks.util.enums.UserTaskFieldType;
+import io.littlehorse.usertasks.util.ProtobufJson;
 import io.littlehorse.usertasks.util.enums.UserTaskStatus;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -36,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.JsonNode;
 
 class UserTaskServiceTest {
     private static final int RESULTS_LIMIT = 10;
@@ -49,6 +48,17 @@ class UserTaskServiceTest {
     @BeforeEach
     void init() {
         when(lhClients.get(anyString())).thenReturn(lhTenantClient);
+        when(lhTenantClient.getStructDef(any(StructDefId.class)))
+                .thenReturn(StructDef.newBuilder()
+                        .setId(schemaId())
+                        .setStructDef(InlineStructDef.newBuilder()
+                                .putFields(
+                                        "request",
+                                        StructFieldDef.newBuilder()
+                                                .setFieldType(TypeDefinition.newBuilder()
+                                                        .setPrimitiveType(VariableType.STR))
+                                                .build()))
+                        .build());
     }
 
     @Test
@@ -657,8 +667,8 @@ class UserTaskServiceTest {
 
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
-        assertFalse(foundUserTaskRunDTO.getFields().isEmpty());
-        assertTrue(foundUserTaskRunDTO.getFields().stream().allMatch(hasMandatoryFieldsForUserTaskField()));
+        assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
+        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
         assertNull(foundUserTaskRunDTO.getEvents());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
@@ -700,8 +710,8 @@ class UserTaskServiceTest {
 
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
-        assertFalse(foundUserTaskRunDTO.getFields().isEmpty());
-        assertTrue(foundUserTaskRunDTO.getFields().stream().allMatch(hasMandatoryFieldsForUserTaskField()));
+        assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
+        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
         assertFalse(foundUserTaskRunDTO.getEvents().isEmpty());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
@@ -724,7 +734,6 @@ class UserTaskServiceTest {
                 .build();
         var foundUserTaskDef =
                 buildFakeUserTaskDef(foundUserTaskRun.getUserTaskDefId().getName());
-        var expectedResultsKeys = Set.of("Requested by", "Request", "Approved");
         Map<String, VariableValue> expectedResultValues = Map.of(
                 "Requested by", VariableValue.newBuilder().setStr("Pedro").build(),
                 "Request",
@@ -733,8 +742,13 @@ class UserTaskServiceTest {
                                 .build(),
                 "Approved", VariableValue.newBuilder().setBool(true).build());
 
-        foundUserTaskRun =
-                foundUserTaskRun.toBuilder().putAllResults(expectedResultValues).build();
+        var fields = InlineStruct.newBuilder();
+        expectedResultValues.forEach((name, value) ->
+                fields.putFields(name, StructField.newBuilder().setValue(value).build()));
+        var output = VariableValue.newBuilder()
+                .setStruct(Struct.newBuilder().setStructDefId(schemaId()).setStruct(fields))
+                .build();
+        foundUserTaskRun = foundUserTaskRun.toBuilder().setOutput(output).build();
 
         when(lhTenantClient.getUserTaskRun(any(UserTaskRunId.class))).thenReturn(foundUserTaskRun);
         when(lhTenantClient.getUserTaskDef(any(UserTaskDefId.class))).thenReturn(foundUserTaskDef);
@@ -748,11 +762,10 @@ class UserTaskServiceTest {
 
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
-        assertFalse(foundUserTaskRunDTO.getFields().isEmpty());
-        assertTrue(foundUserTaskRunDTO.getFields().stream().allMatch(hasMandatoryFieldsForUserTaskField()));
+        assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
+        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
         assertNull(foundUserTaskRunDTO.getEvents());
-        assertFalse(foundUserTaskRunDTO.getResults().isEmpty());
-        assertTrue(foundUserTaskRunDTO.getResults().keySet().containsAll(expectedResultsKeys));
+        assertEquals(ProtobufJson.write(output), foundUserTaskRunDTO.getOutput());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
         verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
@@ -789,10 +802,10 @@ class UserTaskServiceTest {
 
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
-        assertFalse(foundUserTaskRunDTO.getFields().isEmpty());
+        assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
         assertNull(foundUserTaskRunDTO.getEvents());
         assertNull(foundUserTaskRunDTO.getUser());
-        assertTrue(foundUserTaskRunDTO.getFields().stream().allMatch(hasMandatoryFieldsForUserTaskField()));
+        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
         verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
@@ -829,10 +842,10 @@ class UserTaskServiceTest {
 
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
-        assertFalse(foundUserTaskRunDTO.getFields().isEmpty());
+        assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
         assertNull(foundUserTaskRunDTO.getEvents());
         assertEquals(userId, foundUserTaskRunDTO.getUser().getId());
-        assertTrue(foundUserTaskRunDTO.getFields().stream().allMatch(hasMandatoryFieldsForUserTaskField()));
+        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
         verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
@@ -856,17 +869,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "string-field",
-                                UserTaskVariableValue.builder()
-                                        .value("some-value")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build()))
+                .output(sampleOutput())
                 .build();
 
         assertThrows(NullPointerException.class, () -> userTaskService.completeUserTask(userId, request, null, false));
@@ -884,17 +887,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "string-field",
-                                UserTaskVariableValue.builder()
-                                        .value("some-value")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build()))
+                .output(sampleOutput())
                 .build();
 
         var userTaskRun = buildFakeUserTaskRun(userId, wfRunId);
@@ -908,7 +901,7 @@ class UserTaskServiceTest {
         userTaskService.completeUserTask(userId, request, tenantId, false);
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient, times(2)).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
@@ -920,22 +913,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "string-field",
-                                UserTaskVariableValue.builder()
-                                        .value("some-value")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build(),
-                        "double-field",
-                                UserTaskVariableValue.builder()
-                                        .type(UserTaskFieldType.DOUBLE)
-                                        .value(2.0)
-                                        .build()))
+                .output(sampleOutput())
                 .build();
 
         var userTaskRun = buildFakeUserTaskRun(userId, wfRunId);
@@ -949,7 +927,7 @@ class UserTaskServiceTest {
         userTaskService.completeUserTask(userId, request, tenantId, true);
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient, times(2)).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
@@ -962,22 +940,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "string-field",
-                                UserTaskVariableValue.builder()
-                                        .value("some-value")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build(),
-                        "double-field",
-                                UserTaskVariableValue.builder()
-                                        .type(UserTaskFieldType.DOUBLE)
-                                        .value(2.0)
-                                        .build()))
+                .output(sampleOutput())
                 .build();
 
         var userTaskRun = buildFakeUserTaskRun(userId, wfRunId);
@@ -992,7 +955,7 @@ class UserTaskServiceTest {
         userTaskService.completeUserTask(userId, request, tenantId, true);
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient, times(2)).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
@@ -1004,7 +967,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of())
+                .output(sampleOutput())
                 .build();
 
         var doneUserTaskRun = buildFakeUserTaskRun(userId, wfRunId).toBuilder()
@@ -1022,7 +985,7 @@ class UserTaskServiceTest {
                 CustomUnauthorizedException.class,
                 () -> userTaskService.completeUserTask(userId, request, tenantId, false));
 
-        var expectedErrorMessage = "Current user is forbidden from accessing this UserTask information";
+        var expectedErrorMessage = "Claim the task before submitting its output";
 
         assertEquals(expectedErrorMessage, thrownException.getMessage());
 
@@ -1039,7 +1002,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of())
+                .output(sampleOutput())
                 .build();
 
         var doneUserTaskRun = buildFakeUserTaskRun(userId, wfRunId).toBuilder()
@@ -1058,13 +1021,13 @@ class UserTaskServiceTest {
                 () -> userTaskService.completeUserTask(userId, request, tenantId, false));
 
         int expectedHttpErrorCode = HttpStatus.FORBIDDEN.value();
-        var expectedErrorMessage = "The UserTask you are trying to complete is already DONE or CANCELLED";
+        var expectedErrorMessage = "The UserTask is already DONE or CANCELLED";
 
         assertEquals(expectedHttpErrorCode, thrownException.getBody().getStatus());
         assertEquals(expectedErrorMessage, thrownException.getReason());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient, never()).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient, never()).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
@@ -1076,7 +1039,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of())
+                .output(sampleOutput())
                 .build();
 
         var cancelledUserTaskRun = buildFakeUserTaskRun(userId, wfRunId).toBuilder()
@@ -1095,13 +1058,13 @@ class UserTaskServiceTest {
                 () -> userTaskService.completeUserTask(userId, request, tenantId, false));
 
         int expectedHttpErrorCode = HttpStatus.FORBIDDEN.value();
-        var expectedErrorMessage = "The UserTask you are trying to complete is already DONE or CANCELLED";
+        var expectedErrorMessage = "The UserTask is already DONE or CANCELLED";
 
         assertEquals(expectedHttpErrorCode, thrownException.getBody().getStatus());
         assertEquals(expectedErrorMessage, thrownException.getReason());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient, never()).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient, never()).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
@@ -1113,22 +1076,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "string-field",
-                                UserTaskVariableValue.builder()
-                                        .value("some-value")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build(),
-                        "not-defined-field",
-                                UserTaskVariableValue.builder()
-                                        .value(true)
-                                        .type(UserTaskFieldType.BOOLEAN)
-                                        .build()))
+                .output(sampleOutput())
                 .build();
 
         var userTaskRun = buildFakeUserTaskRun(userId, wfRunId);
@@ -1149,7 +1097,7 @@ class UserTaskServiceTest {
         assertEquals("INVALID_ARGUMENT", thrownException.getReason());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient, times(2)).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
@@ -1161,22 +1109,7 @@ class UserTaskServiceTest {
         var request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "string-field",
-                                UserTaskVariableValue.builder()
-                                        .value("some-value")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build(),
-                        "not-defined-field",
-                                UserTaskVariableValue.builder()
-                                        .value(true)
-                                        .type(UserTaskFieldType.BOOLEAN)
-                                        .build()))
+                .output(sampleOutput())
                 .build();
 
         var userTaskRun = buildFakeUserTaskRun(userId, wfRunId);
@@ -1191,59 +1124,46 @@ class UserTaskServiceTest {
                 StatusRuntimeException.class, () -> userTaskService.completeUserTask(userId, request, tenantId, false));
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient, times(2)).getUserTaskDef(any(UserTaskDefId.class));
+        verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
         verify(lhTenantClient).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
     }
 
     @Test
-    void
-            completeUserTask_shouldThrowAResponseStatusExceptionAsBadRequestWhenRequiredStringUserTaskVariableValueInputIsInvalid() {
-        var userId = "my-user-id";
-        var wfRunId = buildStringGuid();
-        var userTaskRunGuid = buildStringGuid();
-        var request = CompleteUserTaskRequest.builder()
-                .wfRunId(wfRunId)
-                .userTaskRunGuid(userTaskRunGuid)
-                .results(Map.of(
-                        "Requested by",
-                                UserTaskVariableValue.builder()
-                                        .value("    ")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "Request",
-                                UserTaskVariableValue.builder()
-                                        .value("  ")
-                                        .type(UserTaskFieldType.STRING)
-                                        .build(),
-                        "integer-field",
-                                UserTaskVariableValue.builder()
-                                        .value(1)
-                                        .type(UserTaskFieldType.INTEGER)
-                                        .build(),
-                        "not-defined-field",
-                                UserTaskVariableValue.builder()
-                                        .value(true)
-                                        .type(UserTaskFieldType.BOOLEAN)
-                                        .build()))
-                .build();
-
-        var userTaskRun = buildFakeUserTaskRun(userId, wfRunId);
-        var userTaskDef = buildFakeUserTaskDef(userTaskRun.getUserTaskDefId().getName());
-
-        when(lhTenantClient.getUserTaskRun(any(UserTaskRunId.class))).thenReturn(userTaskRun);
-        when(lhTenantClient.getUserTaskDef(any(UserTaskDefId.class))).thenReturn(userTaskDef);
-
-        ResponseStatusException responseStatusException = assertThrows(
-                ResponseStatusException.class,
-                () -> userTaskService.completeUserTask(userId, request, tenantId, false));
-
+    void completeUserTask_leavesStringValidationToKernel() {
+        var run = buildFakeUserTaskRun("user", "run");
+        when(lhTenantClient.getUserTaskRun(any(UserTaskRunId.class))).thenReturn(run);
+        when(lhTenantClient.getUserTaskDef(any(UserTaskDefId.class))).thenReturn(buildFakeUserTaskDef("definition"));
+        var output = ProtobufJson.write(VariableValue.newBuilder()
+                .setStruct(Struct.newBuilder()
+                        .setStruct(InlineStruct.newBuilder()
+                                .putFields(
+                                        "request",
+                                        StructField.newBuilder()
+                                                .setValue(VariableValue.newBuilder()
+                                                        .setStr("  "))
+                                                .build())))
+                .build());
+        userTaskService.completeUserTask(
+                "user",
+                CompleteUserTaskRequest.builder()
+                        .wfRunId("run")
+                        .userTaskRunGuid("task")
+                        .output(output)
+                        .build(),
+                tenantId,
+                false);
+        var captor = ArgumentCaptor.forClass(CompleteUserTaskRunRequest.class);
+        verify(lhTenantClient).completeUserTaskRun(captor.capture());
         assertEquals(
-                "Mandatory Field(s): Requested by, Request contain invalid inputs (null or whitespace-only values)",
-                responseStatusException.getReason());
-
-        verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
-        verify(lhTenantClient, times(2)).getUserTaskDef(any(UserTaskDefId.class));
-        verify(lhTenantClient, never()).completeUserTaskRun(any(CompleteUserTaskRunRequest.class));
+                "  ",
+                captor.getValue()
+                        .getOutput()
+                        .getStruct()
+                        .getStruct()
+                        .getFieldsOrThrow("request")
+                        .getValue()
+                        .getStr());
+        assertTrue(captor.getValue().getResultsMap().isEmpty());
     }
 
     @Test
@@ -2198,6 +2118,7 @@ class UserTaskServiceTest {
 
     private UserTaskRun buildFakeUserTaskRun(String userId, String wfRunId) {
         return UserTaskRun.newBuilder()
+                .setResultStructDefId(schemaId())
                 .setId(UserTaskRunId.newBuilder()
                         .setUserTaskGuid(UUID.randomUUID().toString())
                         .setWfRunId(WfRunId.newBuilder().setId(wfRunId).build())
@@ -2252,39 +2173,29 @@ class UserTaskServiceTest {
     private UserTaskDef buildFakeUserTaskDef(String userTaskDefId) {
         return UserTaskDef.newBuilder()
                 .setName(userTaskDefId)
-                .addFields(buildFakeUserTaskField(VariableType.STR, "Requested by"))
-                .addFields(buildFakeUserTaskField(VariableType.STR, "Request"))
-                .addFields(buildFakeUserTaskField(VariableType.BOOL, "Approved"))
+                .setResultStructDefId(schemaId())
                 .build();
     }
 
     private UserTaskDef buildFakeUserTaskDefWithOptionalFields(String userTaskDefId) {
-        return UserTaskDef.newBuilder()
-                .setName(userTaskDefId)
-                .addFields(buildFakeUserTaskFieldAsOptional(VariableType.STR, "Requested by"))
-                .addFields(buildFakeUserTaskFieldAsOptional(VariableType.STR, "Request"))
-                .addFields(buildFakeUserTaskFieldAsOptional(VariableType.BOOL, "Approved"))
-                .build();
+        return buildFakeUserTaskDef(userTaskDefId);
     }
 
-    private UserTaskField buildFakeUserTaskField(VariableType type, String fieldName) {
-        return UserTaskField.newBuilder()
-                .setName(fieldName)
-                .setDisplayName(fieldName)
-                .setDescription("Random description")
-                .setType(type)
-                .setRequired(true)
-                .build();
+    private StructDefId schemaId() {
+        return StructDefId.newBuilder().setName("request-form").setVersion(2).build();
     }
 
-    private UserTaskField buildFakeUserTaskFieldAsOptional(VariableType type, String fieldName) {
-        return UserTaskField.newBuilder()
-                .setName(fieldName)
-                .setDisplayName(fieldName)
-                .setDescription("Random description")
-                .setType(type)
-                .setRequired(false)
-                .build();
+    private JsonNode sampleOutput() {
+        return ProtobufJson.write(VariableValue.newBuilder()
+                .setStruct(Struct.newBuilder()
+                        .setStruct(InlineStruct.newBuilder()
+                                .putFields(
+                                        "request",
+                                        StructField.newBuilder()
+                                                .setValue(VariableValue.newBuilder()
+                                                        .setStr("a request"))
+                                                .build())))
+                .build());
     }
 
     private Predicate<SimpleUserTaskRunDTO> hasMandatoryFieldsForAUser(String userId) {
@@ -2313,13 +2224,5 @@ class UserTaskServiceTest {
     private Predicate<SimpleUserTaskRunDTO> hasScheduledTimeBeforeLatestStart(LocalDateTime latestStartDate) {
         return dto -> Objects.nonNull(dto.getScheduledTime())
                 && dto.getScheduledTime().isBefore(latestStartDate);
-    }
-
-    private Predicate<UserTaskFieldDTO> hasMandatoryFieldsForUserTaskField() {
-        return userTaskFieldDTO -> StringUtils.hasText(userTaskFieldDTO.getName())
-                && StringUtils.hasText(userTaskFieldDTO.getDescription())
-                && StringUtils.hasText(userTaskFieldDTO.getDisplayName())
-                && Objects.nonNull(userTaskFieldDTO.getType())
-                && !userTaskFieldDTO.getType().equals(UserTaskFieldType.UNRECOGNIZED);
     }
 }

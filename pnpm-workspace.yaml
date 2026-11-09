@@ -7,6 +7,9 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@littlehorse-enterprises/*'
 
+overrides:
+  storybook: 10.6.2
+
 onlyBuiltDependencies:
   - esbuild
   - sharp

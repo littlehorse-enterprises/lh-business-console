@@ -173,3 +173,20 @@ backend principal also needs permission to read StructDefs in each tenant.
 Refresh or publish the appropriate snapshot if building against an older artifact.
 The demo workflow now registers a StructDef and references it from its UserTaskDef;
 previously created field-backed runs must be replaced with new runs.
+
+### Backend schema DTOs
+
+Schema metadata is exposed through explicit DTOs rather than raw protobuf JSON:
+`StructDefIdDTO`, `StructDefDTO`, `InlineStructDefDTO`, `StructFieldDefDTO`,
+`TypeDefinitionDTO`, `InlineArrayDefDTO`, and `InlineMapDefDTO`. They keep the
+property names of the protobuf messages, with these differences:
+
+- `StructDefId.version` is always present. Protobuf JSON omits zero values, so the
+  first version of a StructDef used to arrive without a `version`.
+- `isNullable` and `masked` are always present booleans.
+- `structDef.fields` is always present, possibly empty.
+- `createdAt` uses the same millisecond UTC format as the other task timestamps.
+
+Values stay in protobuf JSON: `output`, a saved event's `output`, and a field's
+`defaultValue` are LittleHorse `VariableValue`s, which are recursive and carry
+int64 values as strings.

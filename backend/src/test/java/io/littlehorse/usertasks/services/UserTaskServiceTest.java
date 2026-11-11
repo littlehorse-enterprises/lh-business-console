@@ -17,6 +17,7 @@ import io.littlehorse.usertasks.models.requests.AssignmentRequest;
 import io.littlehorse.usertasks.models.requests.CompleteUserTaskRequest;
 import io.littlehorse.usertasks.models.requests.UserTaskRequestFilter;
 import io.littlehorse.usertasks.models.responses.SimpleUserTaskRunDTO;
+import io.littlehorse.usertasks.models.responses.StructDefIdDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskDefListDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskRunListDTO;
 import io.littlehorse.usertasks.util.DateUtil;
@@ -668,7 +669,7 @@ class UserTaskServiceTest {
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
         assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
-        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
+        assertEquals(StructDefIdDTO.fromServer(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
         assertNull(foundUserTaskRunDTO.getEvents());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
@@ -711,7 +712,7 @@ class UserTaskServiceTest {
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
         assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
-        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
+        assertEquals(StructDefIdDTO.fromServer(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
         assertFalse(foundUserTaskRunDTO.getEvents().isEmpty());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
@@ -763,7 +764,7 @@ class UserTaskServiceTest {
         assertEquals(existingWfRunId, foundUserTaskRunDTO.getWfRunId());
         assertEquals(existingUserTaskGuid, foundUserTaskRunDTO.getId());
         assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
-        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
+        assertEquals(StructDefIdDTO.fromServer(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
         assertNull(foundUserTaskRunDTO.getEvents());
         assertEquals(ProtobufJson.write(output), foundUserTaskRunDTO.getOutput());
 
@@ -805,7 +806,7 @@ class UserTaskServiceTest {
         assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
         assertNull(foundUserTaskRunDTO.getEvents());
         assertNull(foundUserTaskRunDTO.getUser());
-        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
+        assertEquals(StructDefIdDTO.fromServer(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
         verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));
@@ -845,7 +846,7 @@ class UserTaskServiceTest {
         assertFalse(foundUserTaskRunDTO.getStructDefs().isEmpty());
         assertNull(foundUserTaskRunDTO.getEvents());
         assertEquals(userId, foundUserTaskRunDTO.getUser().getId());
-        assertEquals(ProtobufJson.write(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
+        assertEquals(StructDefIdDTO.fromServer(schemaId()), foundUserTaskRunDTO.getResultStructDefId());
 
         verify(lhTenantClient).getUserTaskRun(any(UserTaskRunId.class));
         verify(lhTenantClient).getUserTaskDef(any(UserTaskDefId.class));

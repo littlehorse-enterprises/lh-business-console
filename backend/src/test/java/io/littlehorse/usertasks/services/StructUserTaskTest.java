@@ -88,7 +88,8 @@ class StructUserTaskTest {
         var details = service.getUserTaskDetails("run", "task", "tenant", "owner", null, false)
                 .orElseThrow();
 
-        assertEquals(ProtobufJson.write(pinned), details.getResultStructDefId());
+        assertEquals("form", details.getResultStructDefId().getName());
+        assertEquals(3, details.getResultStructDefId().getVersion());
         assertEquals(2, details.getStructDefs().size());
         verify(client).getStructDef(pinned);
         verify(client).getStructDef(childId);

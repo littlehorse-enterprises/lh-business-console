@@ -60,15 +60,17 @@ public class DetailedUserTaskRunDTO {
     private LocalDateTime scheduledTime;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @Schema(description = "The exact StructDefId pinned to this run, in protobuf JSON format")
-    private JsonNode resultStructDefId;
+    @Schema(description = "The exact StructDefId pinned to this run")
+    private StructDefIdDTO resultStructDefId;
 
     @NotNull
-    @Schema(description = "Root StructDef followed by referenced named StructDefs, in protobuf JSON format")
-    private List<JsonNode> structDefs;
+    @Schema(description = "Root StructDef followed by the named StructDefs it references")
+    private List<StructDefDTO> structDefs;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @Schema(description = "Current Struct VariableValue in protobuf JSON format; may be incomplete before completion")
+    @Schema(
+            type = "object",
+            description = "Current Struct VariableValue in protobuf JSON format; may be incomplete before completion")
     private JsonNode output;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -86,7 +88,7 @@ public class DetailedUserTaskRunDTO {
                 .scheduledTime(timestampToLocalDateTime(userTaskRun.getScheduledTime()))
                 .resultStructDefId(
                         userTaskRun.hasResultStructDefId()
-                                ? ProtobufJson.write(userTaskRun.getResultStructDefId())
+                                ? StructDefIdDTO.fromServer(userTaskRun.getResultStructDefId())
                                 : null)
                 .structDefs(List.of())
                 .output(userTaskRun.hasOutput() ? ProtobufJson.write(userTaskRun.getOutput()) : null)

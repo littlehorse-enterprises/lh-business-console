@@ -18,6 +18,7 @@ import io.littlehorse.usertasks.models.requests.comment_requests.PutCommentReque
 import io.littlehorse.usertasks.models.responses.AuditEventDTO;
 import io.littlehorse.usertasks.models.responses.DetailedUserTaskRunDTO;
 import io.littlehorse.usertasks.models.responses.SimpleUserTaskRunDTO;
+import io.littlehorse.usertasks.models.responses.StructDefDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskDefListDTO;
 import io.littlehorse.usertasks.models.responses.UserTaskRunListDTO;
 import io.littlehorse.usertasks.util.ProtobufJson;
@@ -120,7 +121,7 @@ public class UserTaskService {
         if (userTaskRunResult.hasResultStructDefId()) {
             resultDto.setStructDefs(
                     TaskSchemaResolver.resolve(tenantClient, userTaskRunResult.getResultStructDefId()).stream()
-                            .map(ProtobufJson::write)
+                            .map(StructDefDTO::fromServer)
                             .toList());
         }
 

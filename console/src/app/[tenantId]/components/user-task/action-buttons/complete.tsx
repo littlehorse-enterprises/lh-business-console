@@ -149,7 +149,13 @@ export default function CompleteUserTaskButton({
       );
     if (!details) return null;
     if (!details.resultStructDefId)
-      return <p>This task has no fields to complete.</p>;
+      return (
+        <p>
+          {disabled
+            ? "This task has no results."
+            : "This task has no fields to complete."}
+        </p>
+      );
     try {
       const schema = findStructDefinition(
         details.resultStructDefId,

@@ -25,10 +25,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@littlehorse-enterprises/ui-library/dialog";
-import type {
-  DetailedUserTaskRunDTO,
-  SimpleUserTaskRunDTO,
-  TaskVariableValue,
+import {
+  type DetailedUserTaskRunDTO,
+  type SimpleUserTaskRunDTO,
+  type TaskVariableValue,
+  UserTaskEventType,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -61,6 +62,9 @@ export default function CompleteUserTaskButton({
   const params = { wf_run_id: userTask.wfRunId, user_task_guid: userTask.id };
   const disabled =
     readOnly || details?.status === "DONE" || details?.status === "CANCELLED";
+  const saveEvents = (details?.events ?? [])
+    .filter((event) => event.type === UserTaskEventType.TASK_SAVED)
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   const fetchTaskDetails = async () => {
     setLoading(true);
@@ -212,22 +216,19 @@ export default function CompleteUserTaskButton({
             applied when you complete the task.
           </p>
         )}
-        {admin && !!details?.events?.length && (
+        {admin && saveEvents.length > 0 && (
           <details>
             <summary className="cursor-pointer text-sm">Save history</summary>
             <ul className="space-y-1 text-sm">
-              {details.events
-                .filter((event) => event.type === "TASK_SAVED")
-                .sort((a, b) => a.time.localeCompare(b.time))
-                .map((event, index) => (
-                  <li key={`${event.time}-${index}`}>
-                    Saved by{" "}
-                    {"userId" in event.event
-                      ? event.event.userId
-                      : "unknown user"}{" "}
-                    at {new Date(event.time).toLocaleString()}
-                  </li>
-                ))}
+              {saveEvents.map((event, index) => (
+                <li key={`${event.time}-${index}`}>
+                  Saved by{" "}
+                  {"userId" in event.event
+                    ? event.event.userId
+                    : "unknown user"}{" "}
+                  at {new Date(event.time).toLocaleString()}
+                </li>
+              ))}
             </ul>
           </details>
         )}

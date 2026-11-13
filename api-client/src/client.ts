@@ -7,6 +7,10 @@ import {
   UserManagementController,
 } from "./client/index";
 
+// Matches application/json and structured suffixes such as
+// application/problem+json (RFC 9457 error bodies).
+const JSON_CONTENT_TYPE = /[/+]json\b/i;
+
 /**
  * Configuration options for the LittleHorse UserTasks Bridge API client
  * @property {string} baseUrl - Base URL of the API endpoint (e.g., "http://localhost:8089")
@@ -95,7 +99,7 @@ export class LHUTBApiClient {
         // Try to get more error details from the response
         try {
           const contentType = response.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
+          if (contentType && JSON_CONTENT_TYPE.test(contentType)) {
             const errorBody = await response.json();
             console.error("API Error details:", errorBody);
           } else {
@@ -111,7 +115,7 @@ export class LHUTBApiClient {
       }
 
       const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
+      if (contentType && JSON_CONTENT_TYPE.test(contentType)) {
         return response.json();
       } else if (!contentType) {
         // Handle no-content responses explicitly

@@ -56,7 +56,7 @@ class UserTasksApplicationTests {
                 .userTaskDefName("approval")
                 .status(UserTaskStatus.ASSIGNED)
                 .scheduledTime(LocalDateTime.of(2026, 11, 4, 12, 30))
-                .fields(List.of())
+                .structDefs(List.of())
                 .build();
 
         var json = jsonMapper.readTree(jsonMapper.writeValueAsString(task));
@@ -65,6 +65,9 @@ class UserTasksApplicationTests {
         assertEquals("ASSIGNED", json.get("status").asText());
         assertEquals("2026-11-04T12:30:00.000Z", json.get("scheduledTime").asText());
         assertFalse(json.has("results"));
+        assertFalse(json.has("fields"));
+        assertFalse(json.has("output"));
+        assertTrue(json.has("structDefs"));
         assertFalse(json.has("events"));
     }
 

@@ -11,8 +11,8 @@ import io.littlehorse.usertasks.exceptions.NotFoundException;
 import io.littlehorse.usertasks.idp_adapters.IStandardIdentityProviderAdapter;
 import io.littlehorse.usertasks.models.common.UserDTO;
 import io.littlehorse.usertasks.models.common.UserGroupDTO;
-import io.littlehorse.usertasks.models.common.UserTaskVariableValue;
 import io.littlehorse.usertasks.models.requests.CompleteUserTaskRequest;
+import io.littlehorse.usertasks.models.requests.TaskOutputRequest;
 import io.littlehorse.usertasks.models.requests.UserTaskRequestFilter;
 import io.littlehorse.usertasks.models.requests.comment_requests.CommentContentRequest;
 import io.littlehorse.usertasks.models.requests.comment_requests.DeleteCommentRequest;
@@ -176,8 +176,7 @@ public class UserController {
                 @ApiResponse(
                         responseCode = "200",
                         description =
-                                "UserTask's details with fields defined in its UserTaskDef. Additionally, it may include "
-                                        + "results (in case it is in DONE status).",
+                                "UserTask details including the pinned result schema, referenced StructDefs, and current output.",
                         content = {
                             @Content(
                                     mediaType = "application/json",
@@ -237,6 +236,8 @@ public class UserController {
         } catch (CustomUnauthorizedException e) {
             return ResponseEntity.of(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, e.getMessage()))
                     .build();
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             log.error(e.getMessage());
             return ResponseEntity.of(ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR))
@@ -278,7 +279,7 @@ public class UserController {
             @PathVariable(name = "tenant_id") String tenantId,
             @PathVariable(name = "wf_run_id") String wfRunId,
             @PathVariable(name = "user_task_guid") String userTaskRunGuid,
-            @RequestBody Map<String, UserTaskVariableValue> requestBody)
+            @RequestBody TaskOutputRequest requestBody)
             throws JsonProcessingException {
         if (!tenantService.isValidTenant(tenantId, accessToken)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
@@ -293,10 +294,41 @@ public class UserController {
         CompleteUserTaskRequest request = CompleteUserTaskRequest.builder()
                 .wfRunId(wfRunId)
                 .userTaskRunGuid(userTaskRunGuid)
-                .results(requestBody)
+                .output(requestBody.getOutput())
                 .build();
 
         userTaskService.completeUserTask(userIdFromToken, request, tenantId, false);
+    }
+
+    @Operation(
+            summary = "Save UserTask progress",
+            description = "Replaces the draft Struct output without completing the task.")
+    @PostMapping("/{tenant_id}/tasks/{wf_run_id}/{user_task_guid}/progress")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void saveUserTaskProgress(
+            @RequestHeader("Authorization") String accessToken,
+            @PathVariable(name = "tenant_id") String tenantId,
+            @PathVariable(name = "wf_run_id") String wfRunId,
+            @PathVariable(name = "user_task_guid") String userTaskRunGuid,
+            @RequestBody TaskOutputRequest requestBody)
+            throws JsonProcessingException {
+        if (!tenantService.isValidTenant(tenantId, accessToken)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+
+        final Map<String, Object> tokenClaims = TokenUtil.getTokenClaims(accessToken);
+        final CustomIdentityProviderProperties actualIdPProperties =
+                getCustomIdentityProviderProperties(accessToken, identityProviderConfigProperties);
+
+        final var userIdFromToken =
+                (String) tokenClaims.get(actualIdPProperties.getUserIdClaim().toString());
+        CompleteUserTaskRequest request = CompleteUserTaskRequest.builder()
+                .wfRunId(wfRunId)
+                .userTaskRunGuid(userTaskRunGuid)
+                .output(requestBody.getOutput())
+                .build();
+
+        userTaskService.saveUserTaskProgress(userIdFromToken, request, tenantId, false);
     }
 
     @Operation(

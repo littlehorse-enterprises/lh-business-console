@@ -4,6 +4,13 @@ Backend component that serves as a proxy between any OIDC compliant identity pro
 
 The backend uses Spring Boot 4.0.9 and Java 25.
 
+## Struct-backed user task API
+
+The task detail and completion contracts now use Struct-backed UserTasks. This is
+an intentional breaking change; deploy the backend, API client, and console together.
+See [the API migration guide](../docs/struct-backed-user-tasks-api.md) for endpoint
+changes, JSON examples, draft semantics, and required LittleHorse capabilities.
+
 ## Getting Started
 
 ### Software requirements

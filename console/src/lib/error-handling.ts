@@ -43,6 +43,14 @@ function getErrorTypeFromStatus(status: number): ErrorType {
   }
 }
 
+// True for application/json and any "+json" structured suffix, such as the
+// application/problem+json bodies the API sends for errors.
+export function isJsonContentType(contentType?: string | null): boolean {
+  if (!contentType) return false;
+  const mediaType = contentType.split(";")[0].trim().toLowerCase();
+  return mediaType === "application/json" || mediaType.endsWith("+json");
+}
+
 // Main error handling wrapper for server actions
 export async function withErrorHandling<T>(
   action: () => Promise<T>,
@@ -69,9 +77,7 @@ export async function withErrorHandling<T>(
 
       try {
         // Try to parse response as JSON if possible
-        if (
-          response.headers?.get?.("content-type")?.includes("application/json")
-        ) {
+        if (isJsonContentType(response.headers?.get?.("content-type"))) {
           errorData = await response.json();
           console.log("Parsed error data:", errorData);
         } else {
@@ -97,6 +103,9 @@ export async function withErrorHandling<T>(
         errorMessage = errorData.error;
       } else if (errorData.detail) {
         errorMessage = errorData.detail;
+      } else if (errorData.title) {
+        // A problem+json body with no detail still names the status.
+        errorMessage = errorData.title;
       } else if (
         errorData.errors &&
         Array.isArray(errorData.errors) &&

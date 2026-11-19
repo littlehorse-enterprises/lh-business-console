@@ -1,13 +1,17 @@
 "use client";
+
 import {
   adminCompleteUserTask,
   adminGetUserTaskDetail,
+  adminSaveUserTaskProgress,
 } from "@/app/[tenantId]/actions/admin";
 import {
   completeUserTask,
   getUserTaskDetail,
+  saveUserTaskProgress,
 } from "@/app/[tenantId]/actions/user";
 import { ErrorResponse } from "@/lib/error-handling";
+import { findStructDefinition, validateTaskOutput } from "@/lib/task-output";
 import {
   Button,
   buttonVariants,
@@ -21,28 +25,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@littlehorse-enterprises/ui-library/dialog";
-import { Input } from "@littlehorse-enterprises/ui-library/input";
-import { Label } from "@littlehorse-enterprises/ui-library/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@littlehorse-enterprises/ui-library/select";
-import { toast } from "sonner";
-import {
-  DetailedUserTaskRunDTO,
-  SimpleUserTaskRunDTO,
-  UserTaskFieldDTO,
-  UserTaskFieldType,
-  UserTaskVariableValue,
+  type DetailedUserTaskRunDTO,
+  type SimpleUserTaskRunDTO,
+  type TaskVariableValue,
+  UserTaskEventType,
 } from "@littlehorse-enterprises/user-tasks-bridge-api-client";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useSWRConfig } from "swr";
+import { toast } from "sonner";
 import { ErrorHandler } from "../../error-handler";
 import Loading from "../../loading";
 import NotesTextArea from "../notes";
+import { StructFields } from "../struct-fields";
 
 export default function CompleteUserTaskButton({
   userTask,
@@ -53,342 +49,220 @@ export default function CompleteUserTaskButton({
   admin?: boolean;
   readOnly?: boolean;
 }) {
-  const [userTaskDetails, setUserTaskDetails] =
-    useState<DetailedUserTaskRunDTO>();
-  const [userTaskResult, setUserTaskResult] = useState<
-    Record<string, UserTaskVariableValue>
-  >({});
+  const [details, setDetails] = useState<DetailedUserTaskRunDTO>();
+  const [output, setOutput] = useState<TaskVariableValue>();
   const [error, setError] = useState<ErrorResponse>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
   const tenantId = useParams().tenantId as string;
+  const router = useRouter();
+  const { mutate } = useSWRConfig();
+  const params = { wf_run_id: userTask.wfRunId, user_task_guid: userTask.id };
+  const disabled =
+    readOnly || details?.status === "DONE" || details?.status === "CANCELLED";
+  const saveEvents = (details?.events ?? [])
+    .filter((event) => event.type === UserTaskEventType.TASK_SAVED)
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   const fetchTaskDetails = async () => {
-    setIsLoading(true);
+    setLoading(true);
     setError(undefined);
-
-    const params = {
-      wf_run_id: userTask.wfRunId,
-      user_task_guid: userTask.id,
-    };
-
+    setValidationErrors([]);
     const response = await (admin
       ? adminGetUserTaskDetail(tenantId, params)
       : getUserTaskDetail(tenantId, params));
-
-    setIsLoading(false);
-
+    setLoading(false);
     if (response.error) {
       setError(response.error);
       return;
     }
-
-    // Clean up the results data to ensure all values have valid types
-    const cleanedResults: Record<string, UserTaskVariableValue> = {};
-    const results = response.data?.results || {};
-
-    // Loop through all result values
-    for (const fieldName in results) {
-      const fieldValue = results[fieldName];
-
-      // Only include fields with a defined type
-      if (fieldValue && fieldValue.type) {
-        cleanedResults[fieldName] = fieldValue;
-      } else if (
-        fieldValue &&
-        fieldValue.value !== undefined &&
-        fieldValue.value !== null
-      ) {
-        // Find the field definition to get its type
-        const field = response.data?.fields.find((f) => f.name === fieldName);
-        let inferredType = field?.type || UserTaskFieldType.STRING;
-
-        // Fallback to STRING if no type is found
-        if (!inferredType) {
-          console.warn(
-            `No type found for field ${fieldName} in results, defaulting to STRING`,
-          );
-          inferredType = UserTaskFieldType.STRING;
-        }
-
-        cleanedResults[fieldName] = {
-          value: fieldValue.value,
-          type: inferredType,
-        };
-      }
-    }
-
-    setUserTaskDetails(response.data);
-    setUserTaskResult(cleanedResults);
+    const task = response.data;
+    setDetails(task);
+    setOutput(
+      task?.output ??
+        (task?.resultStructDefId
+          ? {
+              struct: {
+                structDefId: task.resultStructDefId,
+                struct: { fields: {} },
+              },
+            }
+          : undefined),
+    );
   };
 
-  useEffect(() => {
-    fetchTaskDetails();
-  }, [tenantId, userTask, admin]);
-
-  // Check for fields with missing types
-  useEffect(() => {
-    if (userTaskDetails?.fields) {
-      const fieldsWithMissingTypes = userTaskDetails.fields.filter(
-        (f) => !f.type,
-      );
-      if (fieldsWithMissingTypes.length > 0) {
-        toast.warning(
-          `Some fields have missing types: ${fieldsWithMissingTypes.map((f) => f.name).join(", ")}`,
-          {
-            duration: 5000,
-          },
+  const handleSubmit = async (saving: boolean) => {
+    if (!details || disabled || submitting) return;
+    if (details.resultStructDefId && output) {
+      let errors: string[];
+      try {
+        errors = validateTaskOutput(
+          output,
+          findStructDefinition(details.resultStructDefId, details.structDefs),
+          details.structDefs,
+          saving,
         );
-        console.warn("Fields with missing types:", fieldsWithMissingTypes);
+      } catch (cause) {
+        errors = [
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load the form schema.",
+        ];
       }
+      setValidationErrors(errors);
+      if (errors.length) return;
     }
-  }, [userTaskDetails]);
-
-  const handleSubmit = async () => {
-    if (!userTaskDetails) return;
-
-    // Validate required string fields for whitespace-only
-    const newFieldErrors: Record<string, string> = {};
-    userTaskDetails.fields.forEach((field) => {
-      if (
-        field.required &&
-        field.type === "STRING" &&
-        (!userTaskResult[field.name]?.value ||
-          userTaskResult[field.name]?.value.toString().trim() === "")
-      ) {
-        newFieldErrors[field.name] =
-          "Empty or whitespace-only values are not valid.";
-      }
-    });
-    setFieldErrors(newFieldErrors);
-    if (Object.keys(newFieldErrors).length > 0) {
-      toast.error("Please fill out all required fields correctly.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const params = {
-      wf_run_id: userTask.wfRunId,
-      user_task_guid: userTask.id,
-    };
-
-    // Clean the data by ensuring all variable values have a defined type
-    const cleanedResult: Record<string, UserTaskVariableValue> = {};
-
-    // Loop through all form fields
-    for (const fieldName in userTaskResult) {
-      const fieldValue = userTaskResult[fieldName];
-
-      // Only include fields with a defined type
-      if (fieldValue && fieldValue.type) {
-        cleanedResult[fieldName] = fieldValue;
-      } else if (
-        fieldValue &&
-        fieldValue.value !== undefined &&
-        fieldValue.value !== null
-      ) {
-        // If we have a value but no type, try to infer a safe type
-        const field = userTaskDetails.fields.find((f) => f.name === fieldName);
-        let inferredType = field?.type || UserTaskFieldType.STRING;
-
-        // Last resort fallback - always use STRING if nothing else works
-        if (!inferredType) {
-          console.warn(
-            `No type found for field ${fieldName}, defaulting to STRING`,
-          );
-          inferredType = UserTaskFieldType.STRING;
-        }
-
-        cleanedResult[fieldName] = {
-          value: fieldValue.value,
-          type: inferredType,
-        };
-      }
-    }
-
-    console.log("Submitting cleaned form data:", cleanedResult);
-
-    const response = await (admin
-      ? adminCompleteUserTask(tenantId, params, cleanedResult)
-      : completeUserTask(tenantId, params, cleanedResult));
-
-    setIsSubmitting(false);
-
+    setSubmitting(true);
+    const request = output ? { output } : {};
+    const action = saving
+      ? admin
+        ? adminSaveUserTaskProgress
+        : saveUserTaskProgress
+      : admin
+        ? adminCompleteUserTask
+        : completeUserTask;
+    const response = await action(tenantId, params, request);
+    setSubmitting(false);
     if (response.error) {
-      toast.error(
-        `Failed to complete task: ${response.error.message || "Unknown error"}`,
-      );
-      console.error("Error response:", response.error);
+      toast.error(response.error.message);
       return;
     }
-
-    toast.success("Task completed successfully");
-    setUserTaskResult({});
+    toast.success(saving ? "Draft saved" : "Task completed");
+    if (saving) await fetchTaskDetails();
+    else setOpen(false);
+    await mutate((key) => Array.isArray(key) && key[1] === "userTask");
+    router.refresh();
   };
 
-  const renderContent = () => {
-    if (isLoading) {
-      return <Loading />;
-    }
-
-    if (error) {
+  const renderForm = () => {
+    if (loading) return <Loading />;
+    if (error)
       return (
         <ErrorHandler
           error={error}
           onRetry={fetchTaskDetails}
           allowReturn={false}
-          title="Error Loading UserTask Details"
+          title="Unable to load task"
         />
       );
+    if (!details) return null;
+    if (!details.resultStructDefId)
+      return (
+        <p>
+          {disabled
+            ? "This task has no results."
+            : "This task has no fields to complete."}
+        </p>
+      );
+    try {
+      const schema = findStructDefinition(
+        details.resultStructDefId,
+        details.structDefs,
+      );
+      return (
+        <StructFields
+          schema={schema}
+          fields={output?.struct?.struct?.fields ?? {}}
+          definitions={details.structDefs}
+          readOnly={disabled || submitting}
+          onChange={(fields) => {
+            setOutput({
+              struct: {
+                structDefId: details.resultStructDefId,
+                struct: { fields },
+              },
+            });
+            setValidationErrors([]);
+          }}
+        />
+      );
+    } catch (cause) {
+      return (
+        <p role="alert">
+          {cause instanceof Error ? cause.message : "Schema unavailable"}
+        </p>
+      );
     }
-
-    if (!userTaskDetails) {
-      return <div>No UserTask details available</div>;
-    }
-
-    return (
-      <>
-        <div className="space-y-2">
-          <Label>Notes:</Label>
-          <NotesTextArea notes={userTaskDetails.notes} />
-        </div>
-        {!readOnly && (
-          <h1 className="text-lg font-semibold text-center">
-            Fill out the form
-          </h1>
-        )}
-        {userTaskDetails.fields.map((field: UserTaskFieldDTO) => (
-          <div key={field.name} className="space-y-2">
-            <Label>
-              {field.displayName}
-              {!readOnly && field.required && (
-                <span className="text-destructive">*</span>
-              )}
-            </Label>
-            {field.type && field.type === "STRING" && (
-              <>
-                <Input
-                  name={field.name}
-                  placeholder={field.description}
-                  value={userTaskResult[field.name]?.value?.toString() || ""}
-                  readOnly={readOnly}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setUserTaskResult({
-                      ...userTaskResult,
-                      [field.name]: {
-                        type: field.type || UserTaskFieldType.STRING,
-                        value: value,
-                      },
-                    });
-                    // Clear error on change
-                    if (fieldErrors[field.name]) {
-                      setFieldErrors((prev) => {
-                        const copy = { ...prev };
-                        delete copy[field.name];
-                        return copy;
-                      });
-                    }
-                  }}
-                />
-                {fieldErrors[field.name] && (
-                  <p className="text-sm font-medium text-destructive">
-                    {fieldErrors[field.name]}
-                  </p>
-                )}
-              </>
-            )}
-            {field.type &&
-              (field.type === "DOUBLE" || field.type === "INTEGER") && (
-                <Input
-                  type="number"
-                  value={userTaskResult[field.name]?.value?.toString() || ""}
-                  readOnly={readOnly}
-                  onChange={(e) => {
-                    const value = Number(e.target.value);
-                    setUserTaskResult({
-                      ...userTaskResult,
-                      [field.name]: {
-                        value,
-                        type: field.type || UserTaskFieldType.DOUBLE,
-                      },
-                    });
-                  }}
-                />
-              )}
-            {field.type && field.type === "BOOLEAN" && (
-              <Select
-                value={userTaskResult[field.name]?.value?.toString() ?? ""}
-                disabled={readOnly}
-                onValueChange={(value) => {
-                  setUserTaskResult({
-                    ...userTaskResult,
-                    [field.name]: {
-                      value: value === "true",
-                      type: field.type || UserTaskFieldType.BOOLEAN,
-                    },
-                  });
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a value" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">True</SelectItem>
-                  <SelectItem value="false">False</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-            {!field.type && (
-              <div className="p-2 text-sm bg-yellow-50 text-yellow-800 rounded border border-yellow-200">
-                Unknown field type
-              </div>
-            )}
-          </div>
-        ))}
-      </>
-    );
   };
 
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (submitting) return;
+        setOpen(next);
+        if (next) void fetchTaskDetails();
+      }}
+    >
       <DialogTrigger asChild>
-        <Button variant="default" className="w-full">
+        <Button className="w-full">
           {readOnly ? "View Results" : "Complete"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="gap-2">
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {readOnly ? "View Results for" : "Complete"}{" "}
-            <span className="font-mono">{userTask.userTaskDefName}</span>
+            {readOnly ? "Results for" : "Complete"} {userTask.userTaskDefName}
           </DialogTitle>
         </DialogHeader>
-
-        {renderContent()}
-
-        {!readOnly && !error && (
+        {details?.notes && <NotesTextArea notes={details.notes} />}
+        {renderForm()}
+        {validationErrors.length > 0 && (
+          <ul role="alert" className="list-disc pl-5 text-sm text-destructive">
+            {validationErrors.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        )}
+        {!disabled && details?.resultStructDefId && (
           <p className="text-sm text-muted-foreground">
-            <span className="text-destructive">*</span> Required fields
+            * Required when completing. Saving replaces your draft. Defaults are
+            applied when you complete the task.
           </p>
         )}
-
+        {admin && saveEvents.length > 0 && (
+          <details>
+            <summary className="cursor-pointer text-sm">Save history</summary>
+            <ul className="space-y-1 text-sm">
+              {saveEvents.map((event, index) => (
+                <li key={`${event.time}-${index}`}>
+                  Saved by{" "}
+                  {"userId" in event.event
+                    ? event.event.userId
+                    : "unknown user"}{" "}
+                  at {new Date(event.time).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         <DialogFooter>
-          <DialogClose className={buttonVariants({ variant: "outline" })}>
+          <DialogClose
+            disabled={submitting}
+            className={buttonVariants({ variant: "outline" })}
+          >
             Close
           </DialogClose>
-
-          {!readOnly && !error && userTaskDetails && (
-            <Button
-              variant="default"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Submitting..." : "Complete"}
-            </Button>
+          {!disabled && !error && details && !loading && (
+            <>
+              {details.resultStructDefId && (
+                <Button
+                  variant="outline"
+                  disabled={submitting}
+                  onClick={() => void handleSubmit(true)}
+                >
+                  Save draft
+                </Button>
+              )}
+              <Button
+                disabled={submitting}
+                onClick={() => void handleSubmit(false)}
+              >
+                {submitting ? "Submitting…" : "Complete"}
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

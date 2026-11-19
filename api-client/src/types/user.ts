@@ -1,4 +1,4 @@
-import { UserTaskStatus, UserTaskVariableValue } from "./common";
+import { UserTaskStatus } from "./common";
 
 // Request params
 export interface GetMyTasksParams {

@@ -21,6 +21,9 @@ test("login and the fixture preview are public while tenant and similar paths re
     "/acme/home-preview",
     "/home-preview/admin",
     "/home-preview-extra",
+    "/form-builder-preview",
+    "/form-builder-preview/admin",
+    "/form-builder-preview-extra",
     "/login-extra",
     "/acme/login",
   ]) {

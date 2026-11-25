@@ -9,12 +9,14 @@ import { usePathname } from "next/navigation";
 const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
-  const isHomePreview = usePathname() === "/home-preview";
+  const pathname = usePathname();
+  const isPreview =
+    pathname === "/home-preview" || pathname === "/form-builder-preview";
 
   return (
     <SessionProvider
-      session={isHomePreview ? null : undefined}
-      refetchOnWindowFocus={!isHomePreview}
+      session={isPreview ? null : undefined}
+      refetchOnWindowFocus={!isPreview}
     >
       <QueryClientProvider client={queryClient}>
         <ThemeProvider

@@ -1,9 +1,9 @@
 import { getToken } from "next-auth/jwt";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getRoles } from "./lib/utils";
 import { auth } from "./auth";
 
-export const proxy = auth(async (req) => {
+const authenticatedProxy = auth(async (req) => {
   const secureCookie = req.nextUrl.protocol === "https:";
   const token = await getToken({
     req,
@@ -65,6 +65,20 @@ export const proxy = auth(async (req) => {
 
   return NextResponse.next();
 });
+
+export function proxy(
+  req: NextRequest,
+  event: Parameters<typeof authenticatedProxy>[1],
+) {
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.LH_FORM_BUILDER_DEMO === "1" &&
+    req.nextUrl.pathname.replace(/\/$/, "") === "/form-builder-preview"
+  ) {
+    return NextResponse.next();
+  }
+  return authenticatedProxy(req, event);
+}
 
 export const config = {
   // This exact route is a self-contained design demo containing only fixtures.
